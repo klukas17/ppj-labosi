@@ -1,14 +1,4 @@
-# klasa za pravilo leksičkog analizatora
-class Rule():
-	def __init__(self, state, regex):
-		self.state = state
-		self.regex = regex
-		self.lexem = None
-		self.NOVI_REDAK = False
-		self.UDJI_U_STANJE = False
-		self.UDJI_U_STANJE_arg = None
-		self.VRATI_SE = False
-		self.VRATI_SE_arg = None
+import shared_classes
 
 # enumeracija za parsiranje ulazne .lan datoteke
 class Lan_parsing_step():
@@ -106,7 +96,7 @@ if __name__ == "__main__":
 				while line[0] != ">":
 					state += line[0]
 					line = line[1:]
-				curr_rule = Rule(state, line[1:])
+				curr_rule = shared_classes.Rule(state, line[1:])
 
 			elif line[0] == "{":
 				curr_step = Lan_parsing_step.RULES_LEXEM
@@ -147,7 +137,15 @@ if __name__ == "__main__":
 
 	# pretvorba regularnih definicija u regularne izraze u deklaraciji pravila
 	for rule in rules:
-		reg_def_body = rule.regex
-		rule.regex = reg_def_to_reg_ex(reg_def_body)
+		rule.regex = reg_def_to_reg_ex(rule.regex)
 
-	print(1)
+	# kopiranje kostura LA_predlozak.py u LA.py
+	f = open("analizator/LA.py", "w")
+	r = open("analizator/LA_predlozak.py", "r")
+	src = r.readlines()
+
+	for i in range(6, len(src)):
+		f.write(src[i])
+
+	f.close()
+	r.close()
