@@ -24,6 +24,39 @@ class Reg_def_parsing_step():
 	NORMAL_MODE = 1
 	REG_DEF_REFERENCE_MODE = 2
 
+# deklariranje globalnih varijabli
+regular_definitions = {}
+states = []
+lexemes = []
+rules = []
+
+# funkcija za pretvaranje regularne definicije u regularni izraz
+def reg_def_to_reg_ex(reg_def_body):
+
+	global regular_definitions
+
+	reg_ex = ""
+	reg_def_referenced = None
+	curr_state = Reg_def_parsing_step.NORMAL_MODE
+
+	for i in range(len(reg_def_body)):
+
+		if curr_state == Reg_def_parsing_step.NORMAL_MODE and reg_def_body[i] == "{" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
+			curr_state = Reg_def_parsing_step.REG_DEF_REFERENCE_MODE
+			reg_def_referenced = ""
+
+		elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE and reg_def_body[i] == "}" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
+			curr_state = Reg_def_parsing_step.NORMAL_MODE
+			reg_ex += "(" + regular_definitions[reg_def_referenced] + ")"
+
+		elif curr_state == Reg_def_parsing_step.NORMAL_MODE:
+			reg_ex += reg_def_body[i]
+
+		elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE:
+			reg_def_referenced += reg_def_body[i]
+
+	return reg_ex
+
 # generiranje LA.py datoteke
 if __name__ == "__main__":
 
@@ -32,10 +65,6 @@ if __name__ == "__main__":
 	curr_rule = None
 	line = None
 	regular_definitions_raw = []
-	regular_definitions = {}
-	states = []
-	lexemes = []
-	rules = []
 
 	# parsiranje ulaza sa stdin
 	try:
@@ -110,30 +139,15 @@ if __name__ == "__main__":
 	except EOFError:
 		pass
 
-	# pretvorba regularnih definicija u regularne izraze
+	# pretvorba regularnih definicija u regularne izraze u deklaraciji regularnih definicija
 	for reg_def in regular_definitions_raw:
-		reg_ex = ""
-		reg_def_referenced = None
-		curr_state = Reg_def_parsing_step.NORMAL_MODE
 		reg_def_name = reg_def[0]
 		reg_def_body = reg_def[1]
-		for i in range(len(reg_def_body)):
+		regular_definitions[reg_def_name] = reg_def_to_reg_ex(reg_def_body)
 
-			if curr_state == Reg_def_parsing_step.NORMAL_MODE and reg_def_body[i] == "{" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
-				curr_state = Reg_def_parsing_step.REG_DEF_REFERENCE_MODE
-				reg_def_referenced = ""
+	# pretvorba regularnih definicija u regularne izraze u deklaraciji pravila
+	for rule in rules:
+		reg_def_body = rule.regex
+		rule.regex = reg_def_to_reg_ex(reg_def_body)
 
-			elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE and reg_def_body[i] == "}" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
-				curr_state = Reg_def_parsing_step.NORMAL_MODE
-				reg_ex += "(" + regular_definitions[reg_def_referenced] + ")"
-
-			elif curr_state == Reg_def_parsing_step.NORMAL_MODE:
-				reg_ex += reg_def_body[i]
-
-			elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE:
-				reg_def_referenced += reg_def_body[i]
-
-		regular_definitions[reg_def_name] = reg_ex
-
-	for k in regular_definitions:
-		print(k + " " + regular_definitions[k])
+	print(1)
