@@ -1,4 +1,5 @@
-import shared_classes
+import rule
+from sys import stdin
 
 # enumeracija za parsiranje ulazne .lan datoteke
 class Lan_parsing_step():
@@ -61,7 +62,9 @@ if __name__ == "__main__":
 
 		# čitanje regularnih definicija, stanja i leksičkih jedinki
 		while True:
-			line = input()
+			line = ""
+			while (c := stdin.read(1)) != "\n":
+				line += c
 
 			# čitanje regularnih definicija
 			if curr_step == Lan_parsing_step.REGULAR_DEFINITIONS and line[0] != "%":
@@ -96,7 +99,7 @@ if __name__ == "__main__":
 				while line[0] != ">":
 					state += line[0]
 					line = line[1:]
-				curr_rule = shared_classes.Rule(state, line[1:])
+				curr_rule = rule.Rule(state, line[1:])
 
 			elif line[0] == "{":
 				curr_step = Lan_parsing_step.RULES_LEXEM
@@ -141,9 +144,9 @@ if __name__ == "__main__":
 
 	# stvaranje automata za svako pravilo
 	for rule in rules:
-		pass
+		rule.create_enka()
 
 	# stvaranje datoteke s opisom svih pravila
-	r = open("analizator/rules.txt", "w")
+	""" r = open("analizator/rules.txt", "w")
 
-	r.close()
+	r.close() """

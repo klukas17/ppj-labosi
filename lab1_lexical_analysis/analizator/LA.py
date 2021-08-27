@@ -4,7 +4,10 @@
     "Uvod u teoriju računarstva" koje sam predao ak. god. 2020/2021
 '''
 
-import shared_classes
+# ! import shared_classes ne radi
+
+from .. import shared_classes
+from sys import stdin
 
 # lista svih pravila, posloženih po prioritetu
 rules = []
@@ -19,12 +22,7 @@ def read_rules() -> None:
 if __name__ == "__main__":
     
     # čitanje cijelog ulaza u jedan string
-    code = ""
-    try:
-        while True:
-            code += input() + "\n"
-    except EOFError:
-        pass
+    code = stdin.read()
 
     read_rules()
 
