@@ -1,5 +1,5 @@
-import rule
 from sys import stdin
+from lex_utils import rule
 
 # enumeracija za parsiranje ulazne .lan datoteke
 class Lan_parsing_step():
@@ -147,6 +147,6 @@ if __name__ == "__main__":
 		rule.create_enka()
 
 	# stvaranje datoteke s opisom svih pravila
-	""" r = open("analizator/rules.txt", "w")
+	r = open("analizator/rules.txt", "w")
 
-	r.close() """
+	r.close()

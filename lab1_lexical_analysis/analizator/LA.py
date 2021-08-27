@@ -4,17 +4,17 @@
     "Uvod u teoriju računarstva" koje sam predao ak. god. 2020/2021
 '''
 
-# ! import shared_classes ne radi
-
-from .. import shared_classes
-from sys import stdin
+from sys import stdin, path
+old_path = path[0]
+path[0] = path[0][:path[0].rfind("/")]
+from lex_utils import rule
 
 # lista svih pravila, posloženih po prioritetu
 rules = []
 
 # datoteka za čitanje pravila parsiranja koja je pripremio GLA
 def read_rules() -> None:
-    rules = open("analizator/rules.txt", "r")
+    rules = open(old_path + "/rules.txt", "r")
 
     rules.close()
 
@@ -28,4 +28,4 @@ if __name__ == "__main__":
 
     index = 0
     while index < len(code):
-        pass
+        index += 1
