@@ -9,7 +9,7 @@ class Rule():
 		self.UDJI_U_STANJE_arg = None
 		self.VRATI_SE = False
 		self.VRATI_SE_arg = None
-		self.enka = ENKA()
+		self.enka = None
 
 # klasa za definiranje automata koji odgovara jednom definiranom pravilu
 class ENKA():

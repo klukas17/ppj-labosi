@@ -21,7 +21,7 @@ lexemes = []
 rules = []
 
 # funkcija za pretvaranje regularne definicije u regularni izraz
-def reg_def_to_reg_ex(reg_def_body):
+def reg_def_to_reg_ex(reg_def_body: str) -> str:
 
 	global regular_definitions
 
@@ -139,13 +139,11 @@ if __name__ == "__main__":
 	for rule in rules:
 		rule.regex = reg_def_to_reg_ex(rule.regex)
 
-	# kopiranje kostura LA_predlozak.py u LA.py
-	f = open("analizator/LA.py", "w")
-	r = open("analizator/LA_predlozak.py", "r")
-	src = r.readlines()
+	# stvaranje automata za svako pravilo
+	for rule in rules:
+		pass
 
-	for i in range(6, len(src)):
-		f.write(src[i])
+	# stvaranje datoteke s opisom svih pravila
+	r = open("analizator/rules.txt", "w")
 
-	f.close()
 	r.close()
