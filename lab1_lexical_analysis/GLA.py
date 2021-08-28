@@ -28,23 +28,34 @@ def reg_def_to_reg_ex(reg_def_body: str) -> str:
 
 	reg_ex = ""
 	reg_def_referenced = None
+	prefixed = 0
 	curr_state = Reg_def_parsing_step.NORMAL_MODE
 
-	for i in range(len(reg_def_body)):
+	i = 0
+	while i < len(reg_def_body):
 
-		if curr_state == Reg_def_parsing_step.NORMAL_MODE and reg_def_body[i] == "{" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
+		prefixed = 0
+
+		while reg_def_body[i] == "\\":
+			reg_ex += reg_def_body[i]
+			i += 1
+			prefixed = 1 - prefixed
+
+		if curr_state == Reg_def_parsing_step.NORMAL_MODE and reg_def_body[i] == "{" and not prefixed:
 			curr_state = Reg_def_parsing_step.REG_DEF_REFERENCE_MODE
 			reg_def_referenced = ""
 
-		elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE and reg_def_body[i] == "}" and (i == 0 or i > 0 and reg_def_body[i-1] != "\\"):
+		elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE and reg_def_body[i] == "}" and not prefixed:
 			curr_state = Reg_def_parsing_step.NORMAL_MODE
 			reg_ex += "(" + regular_definitions[reg_def_referenced] + ")"
 
-		elif curr_state == Reg_def_parsing_step.NORMAL_MODE:
-			reg_ex += reg_def_body[i]
-
 		elif curr_state == Reg_def_parsing_step.REG_DEF_REFERENCE_MODE:
 			reg_def_referenced += reg_def_body[i]
+
+		else:
+			reg_ex += reg_def_body[i]
+			
+		i += 1
 
 	return reg_ex
 

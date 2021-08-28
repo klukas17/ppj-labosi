@@ -18,7 +18,11 @@ class Rule():
 	# funkcija koja na temelju regularnog izraza stvara konačni automat 
 	def create_enka(self) -> None:
 		self.enka = ENKA(0, "s_fin", True, None)
-		alternation_list = regex_utils.find_alternations(self.regex)
+		regex_tree = regex_utils.create_regex_tree(self.regex)
+		print("---------------------------------------------------------------------------------------------") # ! delete
+		print(self.regex) # ! delete
+		regex_tree.print(0) # ! delete
+		pass # ! delete
 
 # klasa za definiranje automata koji odgovara jednom definiranom pravilu
 class ENKA():
