@@ -13,8 +13,8 @@ class E_NFA():
 
         self.index += 2
         (starting, ending) = self.create_automata(regex_tree)
-        self.transition_function[(self.start_state, "$")] = starting
-        self.transition_function[(ending, "$")] = self.end_state
+        self.transition_function[(self.start_state, "$")] = [starting]
+        self.transition_function[(ending, "$")] = [self.end_state]
 
     # funkcija koja na temelju izgrađenog stabla regularnog izraza gradi konačni automat
     def create_automata(self, regex_tree: regex_utils.RegularSubexpression) -> Tuple[str, str]:
@@ -24,22 +24,22 @@ class E_NFA():
         self.index += 2
         
         if isinstance(regex_tree, regex_utils.Symbol):
-            self.transition_function[(starting, regex_tree.elements)] = ending
+            self.transition_function[(starting, regex_tree.elements)] = [ending]
     
         elif isinstance(regex_tree, regex_utils.Alternation):
             self.transition_function[(starting, "$")] = []
             for sub_ex in regex_tree.elements:
                 (s, e) = self.create_automata(sub_ex)
                 self.transition_function[(starting, "$")].append(s)
-                self.transition_function[(e, "$")] = ending
+                self.transition_function[(e, "$")] = [ending]
 
         elif isinstance(regex_tree, regex_utils.Concatenation):
             curr = starting
             for sub_ex in regex_tree.elements:
                 (s, e) = self.create_automata(sub_ex)
-                self.transition_function[(curr), "$"] = s
+                self.transition_function[(curr), "$"] = [s]
                 curr = e
-            self.transition_function[(curr, "$")] = ending
+            self.transition_function[(curr, "$")] = [ending]
 
         elif isinstance(regex_tree, regex_utils.Kleene):
             (s, e) = self.create_automata(regex_tree.elements[0])

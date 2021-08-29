@@ -150,14 +150,60 @@ if __name__ == "__main__":
 		regular_definitions[reg_def_name] = reg_def_to_reg_ex(reg_def_body)
 
 	# pretvorba regularnih definicija u regularne izraze u deklaraciji pravila
-	for rule in rules:
-		rule.regex = reg_def_to_reg_ex(rule.regex)
+	for r in rules:
+		r.regex = reg_def_to_reg_ex(r.regex)
 
 	# stvaranje automata za svako pravilo
-	for rule in rules:
-		rule.create_enka()
+	for r in rules:
+		r.create_enka()
 
 	# stvaranje datoteke s opisom svih pravila
-	r = open("analizator/rules.txt", "w")
+	file = open("analizator/rules.txt", "w")
 
-	r.close()
+	# serijalizacija izračunatih pravila
+	for r in rules:
+
+		file.write("{\n")
+
+		file.write(r.state + " ")
+
+		if r.lexem is None:
+			file.write("-" + " ")
+		else:
+			file.write(r.lexem + " ")
+
+		if r.NOVI_REDAK:
+			file.write("1" + " ")
+		else:
+			file.write("0" + " ")
+
+		if r.UDJI_U_STANJE:
+			file.write("1" + " " + r.UDJI_U_STANJE_arg + " ")
+		else:
+			file.write("0" + " " + "-" + " ")
+
+		if r.VRATI_SE:
+			file.write("1" + " " + str(r.VRATI_SE_arg) + " ")
+		else:
+			file.write("0" + " " + "-" + " ")
+
+		file.write("\n")
+
+		file.write("{\n")
+
+		file.write("{\n")
+		file.write(r.enfa.start_state + " " + r.enfa.end_state)
+		file.write("\n")
+		file.write("}\n")
+
+		for transition in r.enfa.transition_function:
+			file.write(transition[0] + " " + transition[1])
+			for el in r.enfa.transition_function[transition]:
+				file.write(" " + el)
+			file.write("\n")
+
+		file.write("}\n")
+
+		file.write("}\n")
+
+	file.close()
