@@ -206,4 +206,6 @@ if __name__ == "__main__":
 
 		file.write("}\n")
 
+	file.write(states[0])
+
 	file.close()

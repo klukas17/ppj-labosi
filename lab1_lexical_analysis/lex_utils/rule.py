@@ -20,4 +20,4 @@ class Rule():
 		regex_tree = regex_utils.Symbol()
 		regex_tree.elements = self.regex
 		regex_tree = regex_tree.build_regex_tree()
-		self.enfa = e_nfa_utils.E_NFA(regex_tree)
+		self.enfa = e_nfa_utils.E_NFA(regex_tree, True)

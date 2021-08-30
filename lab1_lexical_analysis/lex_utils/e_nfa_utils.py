@@ -5,16 +5,22 @@ from typing import Tuple
 
 # klasa za definiranje automata koji odgovara jednom definiranom pravilu
 class E_NFA():
-    def __init__(self, regex_tree: regex_utils.RegularSubexpression):
-        self.index = 0
-        self.start_state = "s_" + str(self.index)
-        self.end_state = "s_" + str(self.index + 1)
-        self.transition_function = {}
+    def __init__(self, regex_tree: regex_utils.RegularSubexpression, create_tree: bool):
+        if create_tree:
+            self.index = 0
+            self.start_state = "s_" + str(self.index)
+            self.end_state = "s_" + str(self.index + 1)
+            self.transition_function = {}
 
-        self.index += 2
-        (starting, ending) = self.create_automata(regex_tree)
-        self.transition_function[(self.start_state, "$")] = [starting]
-        self.transition_function[(ending, "$")] = [self.end_state]
+            self.index += 2
+            (starting, ending) = self.create_automata(regex_tree)
+            self.transition_function[(self.start_state, "$")] = [starting]
+            self.transition_function[(ending, "$")] = [self.end_state]
+
+        else:
+            self.start_state = None
+            self.end_state = None
+            self.transition_function = {}
 
     # funkcija koja na temelju izgrađenog stabla regularnog izraza gradi konačni automat
     def create_automata(self, regex_tree: regex_utils.RegularSubexpression) -> Tuple[str, str]:
