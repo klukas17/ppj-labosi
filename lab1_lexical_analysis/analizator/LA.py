@@ -4,7 +4,7 @@
     "Uvod u teoriju računarstva" koje sam predao ak. god. 2020/2021
 '''
 
-from sys import stdin, path
+from sys import stdin, path, stderr
 old_path = path[0]
 path[0] = path[0][:path[0].rfind("/")]
 from lex_utils import rule, e_nfa_utils
@@ -21,7 +21,9 @@ rules = []
 
 # deklaracija globalnih varijabli
 starting_state = None
+curr_state = None
 input_program = None
+curr_line = 1
 
 # funkcija za deserijalizaciju izračunatih pravila
 def read_rules() -> None:
@@ -102,6 +104,31 @@ def return_symbol(c: str) -> None:
 def check_symbol() -> bool:
     return True if len(input_program) > 0 else False
 
+# funkcija koja pokušava naći prefiks preostalog dijela ulaznog niza za dano pravilo
+def find_prefix(rule: rule.Rule) -> int:
+    pass
+
+# funkcija koja primjenjuje pravilo s obzirom na pronađeni prefiks
+def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
+    global input_program
+    global curr_line
+    global curr_state
+
+    found_prefix = input[:prefix_length]
+    print(f'{rule.lexem} {curr_line} {found_prefix}')
+    
+    found_prefix = list(found_prefix)
+    input_program = input_program[:prefix_length]
+
+    if rule.NOVI_REDAK:
+        curr_line += 1
+
+    if rule.UDJI_U_STANJE:
+        curr_state = rule.UDJI_U_STANJE_arg
+
+    if rule.VRATI_SE:
+        input_program = found_prefix[:rule.VRATI_SE_arg] + input_program
+
 # čitanje ulazne datoteke i ispisivanje niza leksičkih jedinki na standardni izlaz
 if __name__ == "__main__":
     
@@ -117,5 +144,27 @@ if __name__ == "__main__":
     # obrada razmaka
     input_program = [c if c != " " else "\\_" for c in input_program]
 
+    # iniciranje stanja analizatora
+    curr_state = starting_state
+
+    # čitanje ulaznog niza i generiranje uniformnog niza leksičkih jedinki
     while check_symbol():
-        pass
+        
+        rule_index = None
+        prefix_found_length = 0
+
+        # za svako pravilo pokušaj pronaći najdulji prefiks
+        for i in range(len(rules)):
+            ret_val = find_prefix(rules[i])
+            if ret_val > prefix_found_length:
+                rule_index = i
+                prefix_found_length = ret_val
+
+        # pronađen je valjan prefiks niza
+        if prefix_found_length > 0:
+            apply_rule(rules[rule_index], prefix_found_length)
+
+        # nije pronađen valjan prefiks niza, oporavak od greške
+        else:
+            stderr.write(input_program[0])
+            input_program = input[1:]
