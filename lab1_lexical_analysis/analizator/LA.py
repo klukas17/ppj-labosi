@@ -19,79 +19,103 @@ class Deserialization_step():
 # lista svih pravila, posloženih po prioritetu
 rules = []
 
-# varijable
+# deklaracija globalnih varijabli
 starting_state = None
+input_program = None
 
 # funkcija za deserijalizaciju izračunatih pravila
 def read_rules() -> None:
+
+    global rules
+    global starting_state
 
     new_rule = rule.Rule(None, None)
     new_rule.enfa = e_nfa_utils.E_NFA(None, False)
     step = Deserialization_step.STARTING_STATE
 
     with open(old_path + "/rules.txt", "r") as data:
-        curr_line = ""
 
-        while True:
-            c = data.read(1)
-            if not c:
-                break
+        while (curr_line := data.readline()):
+
+            # micanje znaka za prelazak u novi red \n
+            curr_line = curr_line[:len(curr_line)-1] if curr_line[len(curr_line)-1] == '\n' else curr_line
+                
+            # ulazak u novo stanje čitanja datoteke
+            if curr_line in ["{", "}"]:
+                            
+                if curr_line == "{":
+                    step += 1
+
+                elif curr_line == "}":
+                    step -= 1
+
+                if step == 0:
+                    rules.append(new_rule)
+                    new_rule = rule.Rule(None, None)
+                    new_rule.enfa = e_nfa_utils.E_NFA(None, False)
+
+            # čitanje podataka
             else:
-                if c == "\n":
 
-                    # ulazak u novo stanje čitanja datoteke
-                    if curr_line in ["{", "}"]:
-                        
-                        if curr_line == "{":
-                            step += 1
+                if step == Deserialization_step.STARTING_STATE:
+                    starting_state = curr_line
 
-                        elif curr_line == "}":
-                            step -= 1
+                elif step == Deserialization_step.ARGS:
+                    args = curr_line.split()
+                    new_rule.state = args[0]
+                    new_rule.lexem = args[1] if args[1] != "-" else None
+                    new_rule.NOVI_REDAK = True if args[2] == "1" else False
+                    new_rule.UDJI_U_STANJE = True if args[3] == "1" else False
+                    new_rule.UDJI_U_STANJE_arg = args[4] if args[3] == "1" else None
+                    new_rule.VRATI_SE = True if args[5] == "1" else False
+                    new_rule.VRATI_SE_arg = int(args[6]) if args[5] == "1" else None
+                    pass
 
-                        if step == 0:
-                            rules.append(new_rule)
-                            new_rule = rule.Rule(None, None)
-                            new_rule.enfa = e_nfa_utils.E_NFA(None, False)
+                elif step == Deserialization_step.TRANSITION_FUNCTION:
+                    args = curr_line.split()
+                    new_rule.enfa.transition_function[(args[0], args[1])] = args[2:]
 
-                    # čitanje podataka
-                    else:
+                elif step == Deserialization_step.START_END_STATES:
+                    args = curr_line.split()
+                    new_rule.enfa.start_state = args[0]
+                    new_rule.enfa.end_state = args[1]
 
-                        if step == Deserialization_step.STARTING_STATE:
-                            pass
+# funkcija dohvaća sljedeći simbol iz ulaznog niza
+def fetch_symbol() -> str:
+    global input_program
 
-                        elif step == Deserialization_step.ARGS:
-                            args = curr_line.split()
-                            new_rule.state = args[0]
-                            new_rule.lexem = args[1] if args[1] != "-" else None
-                            new_rule.NOVI_REDAK = True if args[2] == "1" else False
-                            new_rule.UDJI_U_STANJE = True if args[3] == "1" else False
-                            new_rule.UDJI_U_STANJE_arg = args[4] if args[3] == "1" else None
-                            new_rule.VRATI_SE = True if args[5] == "1" else False
-                            new_rule.VRATI_SE_arg = int(args[6]) if args[5] == "1" else None
-                            pass
+    if len(input_program) > 0:
+        c = input_program[0]
+        input_program = input_program[1:]
+        return c
 
-                        elif step == Deserialization_step.TRANSITION_FUNCTION:
-                            args = curr_line.split()
-                            new_rule.enfa.transition_function[(args[0], args[1])] = args[2:]
+    else:
+        return None
 
-                        elif step == Deserialization_step.START_END_STATES:
-                            args = curr_line.split()
-                            new_rule.enfa.start_state = args[0]
-                            new_rule.enfa.end_state = args[1]
+# funkcija vraća pročitani simbol u ulazni niz
+def return_symbol(c: str) -> None:
+    global input_program
 
-                    curr_line = ""
-                else:
-                    curr_line += c
+    input_program.insert(0, c)
 
-# čitanje ulazne datoteke i ispisivanje niza leksičkih jedinki na stdout
+# funkcija provjerava postoje li znakovi u ulaznom nizu
+def check_symbol() -> bool:
+    return True if len(input_program) > 0 else False
+
+# čitanje ulazne datoteke i ispisivanje niza leksičkih jedinki na standardni izlaz
 if __name__ == "__main__":
     
     # deserijalizacija izračunatih pravila
     read_rules()
 
-    # čitanje cijelog ulaza u jedan string
-    code = stdin.read()
+    # čitanje ulaznog programa
+    input_program = list(stdin.read())
 
-    index = 0
-    while index < len(code):
-        index += 1
+    # prefiksiranje specijalnih znakova
+    input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$'] else f'\{c}' for c in input_program]
+
+    # obrada razmaka
+    input_program = [c if c != " " else "\\_" for c in input_program]
+
+    while check_symbol():
+        pass

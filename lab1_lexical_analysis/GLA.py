@@ -15,7 +15,7 @@ class Reg_def_parsing_step():
 	NORMAL_MODE = 1
 	REG_DEF_REFERENCE_MODE = 2
 
-# deklariranje globalnih varijabli
+# deklaracija globalnih varijabli
 regular_definitions = {}
 states = []
 lexemes = []
