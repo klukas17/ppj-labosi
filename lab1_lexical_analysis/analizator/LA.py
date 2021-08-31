@@ -1,9 +1,3 @@
-'''
-    NAPOMENA: pri pisanju datoteke LA.py, iskoristio sam dijelove svog 
-    vlastitog rješenja 1. laboratorijske vježbe (SimEnka.py) na kolegiju 
-    "Uvod u teoriju računarstva" koje sam predao ak. god. 2020/2021
-'''
-
 from sys import stdin, path, stderr
 old_path = path[0]
 path[0] = path[0][:path[0].rfind("/")]
@@ -106,7 +100,60 @@ def check_symbol() -> bool:
 
 # funkcija koja pokušava naći prefiks preostalog dijela ulaznog niza za dano pravilo
 def find_prefix(rule: rule.Rule) -> int:
-    pass
+    
+    global curr_state
+    global input_program
+
+    # dohvaćanje i spremanje reference radi lakšeg korištenja
+    enfa = rule.enfa
+
+    # analizator je u odgovarajućem stanju za ovo pravilo pa može tražiti valjan prefiks
+    if rule.state == curr_state:
+        
+        # inicijalizacija varijabli
+        visit_queue = [enfa.start_state]
+
+        prefix_length = 0
+        matched_prefix_length = 0
+
+        # automat se nalazi u nekim stanjima
+        while len(visit_queue) > 0:
+
+            current_states = set()
+
+            # računanje epsilon okoline trenutnog skupa stanja
+            while len(visit_queue) > 0:
+
+                s = visit_queue[0]
+                visit_queue = visit_queue[1:]
+                current_states.add(s)
+                if (s, "$") in enfa.transition_function:
+                    for e in enfa.transition_function[(s, "$")]:
+                        if e not in current_states and e not in visit_queue:
+                            visit_queue.append(e)
+
+            if enfa.end_state in current_states:
+                matched_prefix_length = prefix_length
+            
+            # provjera je li pročitan cijeli niz
+            if prefix_length < len(input_program):
+                c = input_program[prefix_length]
+
+                # računanje prijelaza trenutnih stanja automata za pročitani znak
+                for s in current_states:
+                    if (s, c) in enfa.transition_function:
+                        for e in enfa.transition_function[(s,c)]:
+                            visit_queue.append(e)
+
+                # uvećanje duljinu pronađenog prefiksa za 1
+                if len(visit_queue) > 0:
+                    prefix_length += 1
+                    
+        return matched_prefix_length
+
+    # analizator nije u odgovarajućem stanju za ovo pravilo pa odustati od traženja valjanog prefiksa
+    else:
+        return 0
 
 # funkcija koja primjenjuje pravilo s obzirom na pronađeni prefiks
 def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
@@ -114,11 +161,13 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
     global curr_line
     global curr_state
 
-    found_prefix = input[:prefix_length]
-    print(f'{rule.lexem} {curr_line} {found_prefix}')
+    found_prefix = ''.join(input_program[:prefix_length])
+
+    if rule.lexem is not None:
+        print(f'{rule.lexem} {curr_line} {found_prefix}')
     
     found_prefix = list(found_prefix)
-    input_program = input_program[:prefix_length]
+    input_program = input_program[prefix_length:]
 
     if rule.NOVI_REDAK:
         curr_line += 1
@@ -140,6 +189,8 @@ if __name__ == "__main__":
 
     # prefiksiranje specijalnih znakova
     input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$'] else f'\{c}' for c in input_program]
+    input_program = [c if c != '\n' else '\\n' for c in input_program]
+    input_program = [c if c != '\t' else '\\t' for c in input_program]
 
     # obrada razmaka
     input_program = [c if c != " " else "\\_" for c in input_program]
@@ -166,5 +217,5 @@ if __name__ == "__main__":
 
         # nije pronađen valjan prefiks niza, oporavak od greške
         else:
-            stderr.write(input_program[0])
-            input_program = input[1:]
+            # stderr.write(input_program[0])
+            input_program = input_program[1:]

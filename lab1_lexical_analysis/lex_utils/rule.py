@@ -18,6 +18,6 @@ class Rule():
 	# funkcija koja na temelju regularnog izraza stvara konačni automat 
 	def create_enka(self) -> None:
 		regex_tree = regex_utils.Symbol()
-		regex_tree.elements = self.regex
+		regex_tree.elements = regex_utils.trim_enclosing_parentheses(self.regex)
 		regex_tree = regex_tree.build_regex_tree()
 		self.enfa = e_nfa_utils.E_NFA(regex_tree, True)
