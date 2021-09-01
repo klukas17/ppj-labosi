@@ -73,9 +73,9 @@ if __name__ == "__main__":
 
 		# čitanje regularnih definicija, stanja i leksičkih jedinki
 		while True:
-			line = ""
-			while (c := stdin.read(1)) != "\n":
-				line += c
+			line = input()
+			while line == "":
+				line = input()
 
 			# čitanje regularnih definicija
 			if curr_step == Lan_parsing_step.REGULAR_DEFINITIONS and line[0] != "%":
@@ -139,6 +139,8 @@ if __name__ == "__main__":
 					curr_rule.VRATI_SE_arg = int(arg_components[1])
 
 			line = input()
+			while line == "":
+				line = input()
 
 	except EOFError:
 		pass

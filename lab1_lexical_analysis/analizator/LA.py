@@ -139,6 +139,9 @@ def find_prefix(rule: rule.Rule) -> int:
             if prefix_length < len(input_program):
                 c = input_program[prefix_length]
 
+                if c == '\\':
+                    c = '\\\\'
+
                 # računanje prijelaza trenutnih stanja automata za pročitani znak
                 for s in current_states:
                     if (s, c) in enfa.transition_function:
@@ -161,12 +164,30 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
     global curr_line
     global curr_state
 
-    found_prefix = ''.join(input_program[:prefix_length])
+    prefix_list = input_program[:prefix_length]
+    
+    # micanje escape znakova
+    prefix_list = [c if c not in ['\\(', '\\)', '\\{', '\\}', '\\|', '\\*', '\\$', '\\"'] else c[1] for c in prefix_list]
+    prefix_list = [c if c != "\\_" else " " for c in prefix_list]
+
+    found_prefix = ''.join(prefix_list)
 
     if rule.lexem is not None:
-        print(f'{rule.lexem} {curr_line} {found_prefix}')
+        print(f'{rule.lexem} {curr_line} {found_prefix if not rule.VRATI_SE else found_prefix[:rule.VRATI_SE_arg]}')
     
-    found_prefix = list(found_prefix)
+    found_prefix_unescaped = list(found_prefix)
+    found_prefix = []
+
+    i = 0
+    while i < len(found_prefix_unescaped):
+        if found_prefix_unescaped[i] != '\\':
+            found_prefix.append(found_prefix_unescaped[i])
+            i += 1
+        else:
+            found_prefix.append(found_prefix_unescaped[i] + found_prefix_unescaped[i+1])
+            i += 2
+
+    
     input_program = input_program[prefix_length:]
 
     if rule.NOVI_REDAK:
@@ -176,7 +197,7 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
         curr_state = rule.UDJI_U_STANJE_arg
 
     if rule.VRATI_SE:
-        input_program = found_prefix[:rule.VRATI_SE_arg] + input_program
+        input_program = found_prefix[rule.VRATI_SE_arg:] + input_program
 
 # čitanje ulazne datoteke i ispisivanje niza leksičkih jedinki na standardni izlaz
 if __name__ == "__main__":
@@ -188,7 +209,7 @@ if __name__ == "__main__":
     input_program = list(stdin.read())
 
     # prefiksiranje specijalnih znakova
-    input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$'] else f'\{c}' for c in input_program]
+    input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$'] else f'\\{c}' for c in input_program]
     input_program = [c if c != '\n' else '\\n' for c in input_program]
     input_program = [c if c != '\t' else '\\t' for c in input_program]
 
@@ -203,6 +224,9 @@ if __name__ == "__main__":
         
         rule_index = None
         prefix_found_length = 0
+
+        if curr_line == 12:
+            o = 0
 
         # za svako pravilo pokušaj pronaći najdulji prefiks
         for i in range(len(rules)):
