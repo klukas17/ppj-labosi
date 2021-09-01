@@ -12,6 +12,7 @@ class Deserialization_step():
 
 # lista svih pravila, posloženih po prioritetu
 rules = []
+errors = []
 
 # deklaracija globalnih varijabli
 starting_state = None
@@ -139,9 +140,6 @@ def find_prefix(rule: rule.Rule) -> int:
             if prefix_length < len(input_program):
                 c = input_program[prefix_length]
 
-                if c == '\\':
-                    c = '\\\\'
-
                 # računanje prijelaza trenutnih stanja automata za pročitani znak
                 for s in current_states:
                     if (s, c) in enfa.transition_function:
@@ -167,7 +165,7 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
     prefix_list = input_program[:prefix_length]
     
     # micanje escape znakova
-    prefix_list = [c if c not in ['\\(', '\\)', '\\{', '\\}', '\\|', '\\*', '\\$', '\\"'] else c[1] for c in prefix_list]
+    prefix_list = [c if c not in ['\\(', '\\)', '\\{', '\\}', '\\|', '\\*', '\\$', '\\\\'] else c[1] for c in prefix_list]
     prefix_list = [c if c != "\\_" else " " for c in prefix_list]
 
     found_prefix = ''.join(prefix_list)
@@ -209,7 +207,7 @@ if __name__ == "__main__":
     input_program = list(stdin.read())
 
     # prefiksiranje specijalnih znakova
-    input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$'] else f'\\{c}' for c in input_program]
+    input_program = [c if c not in ['(', ')', '{', '}', '|', '*', '$', '\\'] else f'\\{c}' for c in input_program]
     input_program = [c if c != '\n' else '\\n' for c in input_program]
     input_program = [c if c != '\t' else '\\t' for c in input_program]
 
@@ -241,5 +239,11 @@ if __name__ == "__main__":
 
         # nije pronađen valjan prefiks niza, oporavak od greške
         else:
-            # stderr.write(input_program[0])
+            errors.append((input_program[0], curr_line))
             input_program = input_program[1:]
+
+    # ispis pogrešaka na stderr
+    if len(errors) > 0:
+        stderr.write("ERRORS:\n")
+        for error in errors:
+            stderr.write(f' symbol {error[0]} at line {error[1]}\n')
