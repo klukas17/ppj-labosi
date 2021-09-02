@@ -244,6 +244,6 @@ if __name__ == "__main__":
 
     # ispis pogrešaka na stderr
     if len(errors) > 0:
-        stderr.write("ERRORS:\n")
+        stderr.write("LEXICAL ERRORS:\n")
         for error in errors:
             stderr.write(f' symbol {error[0]} at line {error[1]}\n')
