@@ -125,17 +125,17 @@ if __name__ == "__main__":
     for symbol in terminal_symbols:
         symbol_type[symbol] = Symbol_type.TERMINAL
 
-    # računanje relacije ZAPOČINJE za produkcije gramatike
-    starts_with = lr_item_utils.calculate_relation_starts(nonterminal_symbols, terminal_symbols, productions)
-
     # ubacivanje početnog nezavršnog znaka u gramatiku
     start_symbol = nonterminal_symbols[0]
     new_start_symbol = start_symbol + '\''
     while new_start_symbol in nonterminal_symbols or new_start_symbol in terminal_symbols:
         new_start_symbol += '\''
     nonterminal_symbols.insert(0, new_start_symbol)
-    productions[new_start_symbol] = [(start_symbol, 0)]
+    productions[new_start_symbol] = [((start_symbol,), 0)]
     symbol_type[new_start_symbol] = Symbol_type.NONTERMINAL
+
+    # računanje relacije ZAPOČINJE za produkcije gramatike
+    starts_with = lr_item_utils.calculate_relation_starts(nonterminal_symbols, terminal_symbols, productions)
 
     # stvaranje e-NKA čija stanja su LR stavke
     e_nfa = build_enfa()
