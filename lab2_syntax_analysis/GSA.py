@@ -5,6 +5,11 @@ class Symbol_type():
     NONTERMINAL = 1
     TERMINAL = 2
 
+# enumeracija za tip akcije
+class Action_type():
+    REDUCE = 1
+    SHIFT = 2
+
 # oznaka kraja niza
 class End_symbol():
     def __init__(self):
@@ -17,6 +22,22 @@ class Automata():
     def __init__(self):
         self.start_state = None
         self.transition_function = {}
+
+# klasa za modeliranje akcije parsera
+class Action():
+    def __init__(self):
+        pass
+
+class Reduce(Action):
+    def __init__(self, left_side: str, right_side: tuple):
+        Action.__init__(self)
+        self.left_side = left_side
+        self.right_side = right_side
+
+class Shift(Action):
+    def __init__(self, new_state: int):
+        Action.__init__(self)
+        self.new_state = new_state
 
 # funkcija za dohvaćanje pojedine LR stavke (objekti LR stavke su jedinstveni objekti -> obrazac singleton)
 def fetch_lr_item(left_side: str, right_side: tuple, index: int, follow_set: tuple) -> lr_item_utils.LR_item:
@@ -53,12 +74,15 @@ lr_dict_index = {}
 # riječnik koji pod ključem tuple koji označava stanje DKA čuva redni broj tog stanja za gradnju parsera
 parser_states = {}
 
-# funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
-def fetch_end_symbol() -> End_symbol:
-    return end_symbol
+# lista u kojoj se čuvaju sve nejednoznačnosti u gramatici
+conflicts = []
 
 # jedinstvena varijabla pod kojom se čuva oznaka kraja niza
 end_symbol = End_symbol()
+
+# funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
+def fetch_end_symbol() -> End_symbol:
+    return end_symbol
 
 # funkcija koja gradi e-NKA čija stanja su LR stavke
 def build_enfa() -> Automata:
@@ -276,8 +300,60 @@ def build_dfa(e_nfa: Automata) -> Automata:
     return dfa
 
 # funkcija koja gradi tablicu parsiranja na temelju danog DKA
-def build_parser_table() -> dict:
-    pass
+def build_parser_table(dfa: Automata) -> dict:
+    parser_table = {}
+
+    # inicijalno popunjavanje tablice LR parsera
+    for i in range(len(parser_states)):
+        parser_table[i] = {}
+        for terminal in terminal_symbols:
+            parser_table[i][terminal] = None
+        parser_table[i][fetch_end_symbol()] = None
+        for nonterminal in nonterminal_symbols:
+            
+            # u tablici parsera se ne nalazi stupac za početni nezavršni znak gramatike
+            if nonterminal == nonterminal_symbols[0]:
+                continue
+            parser_table[i][nonterminal] = None
+
+    # popunjavanje tablice LR parsera
+    for parser_state in parser_states:
+
+        # dohvaćanje indeksa koji odgovara trenutnom stanju DKA
+        table_index = parser_states[parser_state]
+        
+        # dohvaćanje LR stavki koje odgovaraju trenutnom stanju DKA
+        lr_items = []
+        for index in parser_state:
+            lr_items.append(lr_dict_index[index])
+
+        # računanje potpunih LR stavki
+        complete_lr_items = []
+        for lr_item in lr_items:
+            if lr_item.index == len(lr_item.right_side) or lr_item.right_side == ("$",):
+                complete_lr_items.append(lr_item)
+
+        # stvaranje riječnika u koji se pohranjuju akcije za svaki ulazni znak za trenutno stanje
+        actions = {}
+
+        # iniciranje riječnika akcija
+        for terminal in terminal_symbols:
+            actions[terminal] = []
+        actions[fetch_end_symbol()] = []
+        for nonterminal in nonterminal_symbols:
+            if nonterminal == nonterminal_symbols[0]:
+                continue
+            actions[nonterminal] = []
+
+        # dodavanje akcije redukcije za svaku potpunu LR stavku
+        for lr_item in complete_lr_items:
+            for symbol in lr_item.follow_set:
+                actions[symbol].append(Reduce(lr_item.left_side, lr_item.right_side))
+
+        # dodavanje akcija pomaka
+        
+
+    return parser_table
 
 # generiranje SA.py datoteke
 if __name__ == "__main__":
