@@ -7,3 +7,5 @@ lab1_lexical_analysis/testovi
 lab1_lexical_analysis/autograder.py
 lab2_syntax_analysis/.vscode
 lab2_syntax_analysis/syn_utils/__pycache__
+lab2_syntax_analysis/analizator/parsing_table.txt
+

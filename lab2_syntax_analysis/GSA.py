@@ -43,29 +43,21 @@ class Reduce(Action):
         return ret_val
 
 class Shift(Action):
-    def __init__(self, new_state: int, new_state_elements: tuple):
+    def __init__(self, new_state: int):
         Action.__init__(self)
         self.new_state = new_state
-        self.new_state_elements = new_state_elements
     def __repr__(self) -> str:
         ret_val = "SHIFT "
         ret_val += str(self.new_state)
-        ret_val += " ->"
-        for el in self.new_state_elements:
-            ret_val += " " + str(el)
         return ret_val
 
 class Put(Action):
-    def __init__(self, new_state: int, new_state_elements: tuple):
+    def __init__(self, new_state: int):
         Action.__init__(self)
         self.new_state = new_state
-        self.new_state_elements = new_state_elements
     def __repr__(self) -> str:
         ret_val = "PUT "
         ret_val += str(self.new_state)
-        ret_val += " ->"
-        for el in self.new_state_elements:
-            ret_val += " " + str(el)
         return ret_val   
 
 # funkcija za dohvaćanje pojedine LR stavke (objekti LR stavke su jedinstveni objekti -> obrazac singleton)
@@ -78,8 +70,8 @@ def fetch_lr_item(left_side: str, right_side: tuple, index: int, follow_set: tup
 nonterminal_symbols = []
 terminal_symbols = []
 
-# skup svih sinkronizacijskih znakova
-synchronisation_symbols = set()
+# lista svih sinkronizacijskih znakova
+synchronisation_symbols = []
 
 # riječnik u kojem se pod ključevima koji su završni znakovi gramatike nalaze liste svih desnih strana produkcija za dane ključeve
 productions = {}
@@ -315,6 +307,7 @@ def build_dfa(e_nfa: Automata) -> Automata:
                 if curr_lr_item in e_nfa.transition_function and "$" in e_nfa.transition_function[curr_lr_item]:
                     for lr_item in e_nfa.transition_function[curr_lr_item]["$"]:
                         if lr_item not in discovered_lr_items:
+                            discovered_lr_items.add(lr_item)
                             lr_queue.append(lr_item)
 
             # gradnja novog stanja DKA
@@ -340,6 +333,8 @@ def build_dfa(e_nfa: Automata) -> Automata:
 
 # funkcija koja gradi tablicu parsiranja na temelju danog DKA
 def build_parser_table(dfa: Automata) -> dict:
+    global accepting_combination
+
     parser_table = {}
 
     # inicijalno popunjavanje tablice LR parsera
@@ -393,9 +388,9 @@ def build_parser_table(dfa: Automata) -> dict:
         if parser_state in dfa.transition_function:
             for defined_transition in dfa.transition_function[parser_state]:
                 if symbol_type[defined_transition] == Symbol_type.TERMINAL:
-                    actions[defined_transition].append(Shift(parser_states[dfa.transition_function[parser_state][defined_transition]], dfa.transition_function[parser_state][defined_transition]))
+                    actions[defined_transition].append(Shift(parser_states[dfa.transition_function[parser_state][defined_transition]]))
                 elif symbol_type[defined_transition] == Symbol_type.NONTERMINAL:
-                    actions[defined_transition].append(Put(parser_states[dfa.transition_function[parser_state][defined_transition]], dfa.transition_function[parser_state][defined_transition]))
+                    actions[defined_transition].append(Put(parser_states[dfa.transition_function[parser_state][defined_transition]]))
 
         # zapis izračunatih pravila u tablicu parsera
         for symbol in actions:
@@ -431,7 +426,7 @@ def build_parser_table(dfa: Automata) -> dict:
 
                 # pomakni/reduciraj proturječje
                 if shift_found:
-                    stderr.write(f"shift/reduce conflict for parser state {table_index} and input symbol {symbol} between actions:\n")
+                    stderr.write(f"shift/reduce conflict for state {table_index} and input symbol {symbol} between actions:\n")
                     for action in actions[symbol]:
                         stderr.write(f" {str(action)}\n")
                     stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
@@ -449,7 +444,7 @@ def build_parser_table(dfa: Automata) -> dict:
                                     chosen_action = action
                                     current_index = production[1]
 
-                    stderr.write(f"reduce/reduce conflict for parser state {table_index} and input symbol {symbol} between actions:\n")
+                    stderr.write(f"reduce/reduce conflict for state {table_index} and input symbol {symbol} between actions:\n")
                     for action in actions[symbol]:
                         stderr.write(f" {str(action)}\n")
                     stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
@@ -485,7 +480,7 @@ if __name__ == "__main__":
 
             # čitanje sinkronizacijskih znakova
             elif len(line) >= 4 and line[:4] == "%Syn":
-                synchronisation_symbols = set(line[5:].split(" ")) if len(line) >= 5 else set()
+                synchronisation_symbols = line[5:].split(" ") if len(line) >= 5 else []
 
             # čitanje produkcija gramatike
             else:
@@ -531,4 +526,52 @@ if __name__ == "__main__":
     # stvaranje tablice parsiranja na temelju DKA
     parser_table = build_parser_table(dfa)
 
-    # TODO: serijalizacija objekta parser_table u neku datoteku
+    file = open("analizator/parsing_table.txt", "w")
+
+    file.write("%V")
+    
+    for nonterminal in nonterminal_symbols:
+        file.write(" " + nonterminal)
+
+    file.write("\n")
+
+    file.write("%T")
+
+    for terminal in terminal_symbols:
+        file.write(" " + terminal)
+
+    file.write("\n")
+
+    file.write("%Syn")
+
+    for synchro in synchronisation_symbols:
+        file.write(" " + synchro)
+
+    file.write("\n")
+
+    file.write(str(accepting_combination[0]))
+
+    file.write("\n")
+
+    for state in parser_table:
+        file.write(str(state) + "\n")
+        for transition in parser_table[state]:
+            if parser_table[state][transition] is not None:
+                if transition != fetch_end_symbol():
+                    file.write(" " + transition + " ")
+                else:
+                    file.write(" - ")
+                action = parser_table[state][transition]
+                if isinstance(action, Reduce):
+                    file.write("r{")
+                    file.write(action.left_side)
+                    file.write(" ->")
+                    for el in action.right_side:
+                        file.write(" " + el)
+                    file.write("}\n")
+                elif isinstance(action, Shift):
+                    file.write(f"s{action.new_state}\n")
+                elif isinstance(action, Put):
+                    file.write(f"p{action.new_state}\n")
+
+    file.close()
