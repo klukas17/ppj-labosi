@@ -32,6 +32,8 @@ productions = {}
 symbol_type = {}
 lr_items = {}
 end_symbol = End_symbol()
+empty_nonterminal_symbols = None
+starts_with = None
 
 # funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
 def fetch_end_symbol() -> End_symbol:
@@ -44,8 +46,8 @@ def build_enfa() -> Automata:
     # dodavanje početnog stanja e-NKA u automat
     e_nfa.start_state = fetch_lr_item(new_start_symbol, tuple([start_symbol]), 0, (fetch_end_symbol(),))
     lr_queue = [e_nfa.start_state]
-    visited = set()
-    visited.add(e_nfa.start_state)
+    found_lr_items = set()
+    found_lr_items.add(e_nfa.start_state)
 
     # gradnja epsilon NKA automata
     while len(lr_queue) > 0:
@@ -55,15 +57,46 @@ def build_enfa() -> Automata:
         # pomicanje točke udesno u produkciji
         if curr_lr_state.index < len(curr_lr_state.right_side) and curr_lr_state.right_side != ("$",):
             new_lr_state = fetch_lr_item(curr_lr_state.left_side, curr_lr_state.right_side, curr_lr_state.index + 1, curr_lr_state.follow_set)
-            if new_lr_state not in visited:
-                visited.add(new_lr_state)
+            if new_lr_state not in found_lr_items:
+                found_lr_items.add(new_lr_state)
                 lr_queue.append(new_lr_state)
-            if ((curr_lr_state), curr_lr_state.right_side[curr_lr_state.index]) not in e_nfa.transition_function:
-                e_nfa.transition_function[(curr_lr_state), curr_lr_state.right_side[curr_lr_state.index]] = []
+            if (curr_lr_state, curr_lr_state.right_side[curr_lr_state.index]) not in e_nfa.transition_function:
+                e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])] = []
             e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])].append(new_lr_state)
 
         # ako se točka nalazi ispred nezavršnog znaka
-    pass
+        if curr_lr_state.index < len(curr_lr_state.right_side) and curr_lr_state.right_side != ("$",) and symbol_type[curr_lr_state.right_side[curr_lr_state.index]] == Symbol_type.NONTERMINAL:
+            
+            # računanje skupa znakova pridruženih LR stavci
+            end_reached = False
+            symbol_set = set()
+            index = curr_lr_state.index + 1
+            while index < len(curr_lr_state.right_side) and not end_reached:
+                follow_set = set()
+                curr_symbol = curr_lr_state.right_side[index]
+                for s in starts_with[curr_symbol]:
+                    if starts_with[curr_symbol][s]:
+                        follow_set.add(s) 
+                symbol_set = symbol_set.union(follow_set)
+                if curr_symbol not in empty_nonterminal_symbols:
+                    end_reached = True
+                index += 1
+            if not end_reached:
+                symbol_set = symbol_set.union(set(curr_lr_state.follow_set))
+
+            # u skupu znakova se nalaze samo završni znakovi gramatike, pa uklanjamo nezavršne
+            symbol_set = symbol_set.difference(set(nonterminal_symbols))
+
+            # dodavanje epsilon prijelaza u izračunate LR stavke
+            for production in productions[curr_lr_state.right_side[curr_lr_state.index]]:
+                production = production[0]
+                new_lr_state = fetch_lr_item(curr_lr_state.right_side[curr_lr_state.index], production, 0, tuple(symbol_set))
+                if new_lr_state not in found_lr_items:
+                    found_lr_items.add(new_lr_state)
+                    lr_queue.append(new_lr_state)
+                if (curr_lr_state, "$") not in e_nfa.transition_function:
+                    e_nfa.transition_function[(curr_lr_state), "$"] = []
+                e_nfa.transition_function[(curr_lr_state, "$")].append(new_lr_state)
 
     return e_nfa
 
@@ -135,7 +168,7 @@ if __name__ == "__main__":
     symbol_type[new_start_symbol] = Symbol_type.NONTERMINAL
 
     # računanje relacije ZAPOČINJE za produkcije gramatike
-    starts_with = lr_item_utils.calculate_relation_starts(nonterminal_symbols, terminal_symbols, productions)
+    empty_nonterminal_symbols, starts_with = lr_item_utils.calculate_relation_starts(nonterminal_symbols, terminal_symbols, productions)
 
     # stvaranje e-NKA čija stanja su LR stavke
     e_nfa = build_enfa()

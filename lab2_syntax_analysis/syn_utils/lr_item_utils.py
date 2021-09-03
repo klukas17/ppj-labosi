@@ -94,11 +94,9 @@ def calculate_starts_with(nonterminal_symbols: list, terminal_symbols: list, pro
                     if table[symbol2][symbol3]:
                         table[symbol1][symbol3] = True
 
-    pass
-
 # funkcija računa relaciju ZAPOČINJE za dane produkcije gramatike
 def calculate_relation_starts(nonterminal_symbols: list, terminal_symbols: list, productions: dict) -> dict:
     empty_nonterminal_symbols = calculate_empty_nonterminal_symbols(nonterminal_symbols, terminal_symbols, productions)
     table = calculate_directly_starts_with(nonterminal_symbols, terminal_symbols, productions, empty_nonterminal_symbols)
     calculate_starts_with(nonterminal_symbols, terminal_symbols, productions, table)
-    return table
+    return empty_nonterminal_symbols, table
