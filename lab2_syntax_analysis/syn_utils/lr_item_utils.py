@@ -1,3 +1,5 @@
+from typing import Tuple
+
 # klasa za modeliranje LR stavke
 class LR_item():
     def __init__(self, left_side: str, right_side: tuple, index: int, follow_set: tuple):
@@ -95,7 +97,7 @@ def calculate_starts_with(nonterminal_symbols: list, terminal_symbols: list, pro
                         table[symbol1][symbol3] = True
 
 # funkcija računa relaciju ZAPOČINJE za dane produkcije gramatike
-def calculate_relation_starts(nonterminal_symbols: list, terminal_symbols: list, productions: dict) -> dict:
+def calculate_relation_starts(nonterminal_symbols: list, terminal_symbols: list, productions: dict) -> Tuple[set, dict]:
     empty_nonterminal_symbols = calculate_empty_nonterminal_symbols(nonterminal_symbols, terminal_symbols, productions)
     table = calculate_directly_starts_with(nonterminal_symbols, terminal_symbols, productions, empty_nonterminal_symbols)
     calculate_starts_with(nonterminal_symbols, terminal_symbols, productions, table)

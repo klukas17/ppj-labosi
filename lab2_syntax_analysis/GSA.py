@@ -24,35 +24,63 @@ def fetch_lr_item(left_side: str, right_side: tuple, index: int, follow_set: tup
         lr_items[(left_side, right_side, index, follow_set)] = lr_item_utils.LR_item(left_side, right_side, index, follow_set)
     return lr_items[(left_side, right_side, index, follow_set)] 
 
-# deklaracija globalnih varijabli
+# liste nezavršnih i završnih znakova gramatike, onim redom kojim se pojavljuju u ulaznoj .san datoteci
 nonterminal_symbols = []
 terminal_symbols = []
+
+# skup svih sinkronizacijskih znakova
 synchronisation_symbols = set()
+
+# riječnik u kojem se pod ključevima koji su završni znakovi gramatike nalaze liste svih desnih strana produkcija za dane ključeve
 productions = {}
-symbol_type = {}
+
+# riječnik u kojem se pod ključevima koji su hash sažeci LR stavki nalaze reference na jedinstvene objekte LR stavki
 lr_items = {}
-end_symbol = End_symbol()
+
+# riječnik u kojem se pod ključevima koju su simboli gramatike (završni ili nezavršni) nalazi informacija o tome je li dani simbol završni ili nezavršni znak gramatike
+symbol_type = {}
+
+# skup svih nezavršnih znakova gramatike koji mogu generirati prazni niz, tzv. prazni znakovi
 empty_nonterminal_symbols = None
+
+# riječnik u kojem se pod ključevima simbola nalazi informacija koji simboli gramatike se nalaze u skupu ZAPOČINJE danog ključa
 starts_with = None
+
+# riječnici u kojima se preko objetka LR stavke može doći do njenog pripadnog indeksa, i preko indeksa može doći do pripadnog objetka LR stavke
+lr_dict_item = {}
+lr_dict_index = {}
 
 # funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
 def fetch_end_symbol() -> End_symbol:
     return end_symbol
 
+# jedinstvena varijabla pod kojom se čuva oznaka kraja niza
+end_symbol = End_symbol()
+
 # funkcija koja gradi e-NKA čija stanja su LR stavke
 def build_enfa() -> Automata:
+    global lr_dict_item
+    global lr_dict_index
+
     e_nfa = Automata()
 
-    # dodavanje početnog stanja e-NKA u automat
+    # početno stanje e-NKA
     e_nfa.start_state = fetch_lr_item(new_start_symbol, tuple([start_symbol]), 0, (fetch_end_symbol(),))
+    
+    # varijabla za spremanje pronađenih LR stavki (bit će korisno za konstrukciju DKA)
+    lr_items_list = []
+    lr_items_list.append(e_nfa.start_state)
+
+    # red za obradu svih LR stavki koje čine stanja e-NKA
     lr_queue = [e_nfa.start_state]
+
+    # skup u kojem se čuvaju sve otkrivene LR stavke radi izbjegavanja cirkularnih ovisnosti i beskonačne petlje kao rezultat
     found_lr_items = set()
     found_lr_items.add(e_nfa.start_state)
 
-    # gradnja epsilon NKA automata
+    # obrada svih LR stavki
     while len(lr_queue) > 0:
-        curr_lr_state = lr_queue[0]
-        lr_queue = lr_queue[1:]
+        curr_lr_state = lr_queue.pop(0)
 
         # pomicanje točke udesno u produkciji
         if curr_lr_state.index < len(curr_lr_state.right_side) and curr_lr_state.right_side != ("$",):
@@ -60,17 +88,24 @@ def build_enfa() -> Automata:
             if new_lr_state not in found_lr_items:
                 found_lr_items.add(new_lr_state)
                 lr_queue.append(new_lr_state)
+                lr_items_list.append(new_lr_state)
             if (curr_lr_state, curr_lr_state.right_side[curr_lr_state.index]) not in e_nfa.transition_function:
                 e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])] = []
             e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])].append(new_lr_state)
 
-        # ako se točka nalazi ispred nezavršnog znaka
+        # ako se točka nalazi ispred nezavršnog znaka, potrebno je obraditi taj nezavršni znak i dodati nove prijelaze
         if curr_lr_state.index < len(curr_lr_state.right_side) and curr_lr_state.right_side != ("$",) and symbol_type[curr_lr_state.right_side[curr_lr_state.index]] == Symbol_type.NONTERMINAL:
             
-            # računanje skupa znakova pridruženih LR stavci
+            # varijabla pomoću koje pamtimo jesmo li došli do kraja niza (i moramo li u novoj LR stavci nasljediti simbole koji slijede staru LR stavku)
             end_reached = False
+
+            # skup svih simbola koji slijede novu LR stavku
             symbol_set = set()
+
+            # prvi indeks pod kojim tražimo znakove koji slijede novu LR stavku
             index = curr_lr_state.index + 1
+
+            # računanje skupa znakova pridruženih LR stavci
             while index < len(curr_lr_state.right_side) and not end_reached:
                 follow_set = set()
                 curr_symbol = curr_lr_state.right_side[index]
@@ -87,22 +122,104 @@ def build_enfa() -> Automata:
             # u skupu znakova se nalaze samo završni znakovi gramatike, pa uklanjamo nezavršne
             symbol_set = symbol_set.difference(set(nonterminal_symbols))
 
-            # dodavanje epsilon prijelaza u izračunate LR stavke
+            # dodavanje epsilon prijelaza u izračunatu LR stavku
             for production in productions[curr_lr_state.right_side[curr_lr_state.index]]:
+
+                # production je prethdno bio tuple, gdje je na nultom mjestu sama produkcija, a na prvom redni broj pojavljivanja produkcije u .san datoteci
                 production = production[0]
+
+                # sortiranje novog skupa znakova leksikografski
+                symbol_set = list(symbol_set)
+                end_symbol_in_set = False
+                if fetch_end_symbol() in symbol_set:
+                    end_symbol_in_set = True
+                    symbol_set.remove(fetch_end_symbol())
+                else:
+                    end_symbol_in_set = False
+                symbol_set.sort()
+                if end_symbol_in_set:
+                    symbol_set.append(fetch_end_symbol())
+
                 new_lr_state = fetch_lr_item(curr_lr_state.right_side[curr_lr_state.index], production, 0, tuple(symbol_set))
                 if new_lr_state not in found_lr_items:
                     found_lr_items.add(new_lr_state)
                     lr_queue.append(new_lr_state)
+                    lr_items_list.append(new_lr_state)
                 if (curr_lr_state, "$") not in e_nfa.transition_function:
                     e_nfa.transition_function[(curr_lr_state), "$"] = []
                 e_nfa.transition_function[(curr_lr_state, "$")].append(new_lr_state)
 
+    # izgradnja riječnika potrebnih za konstrukciju DKA
+    for i in range(len(lr_items_list)):
+        lr_dict_index[i] = lr_items_list[i]
+        lr_dict_item[lr_items_list[i]] = i
+
     return e_nfa
 
 # funkcija koja gradi DKA na temelju danog e-NKA
-def build_dfa() -> Automata:
-    pass
+def build_dfa(e_nfa: Automata) -> Automata:
+    dfa = Automata()
+
+    # skup svih stanja DKA
+    dfa_states = set()
+
+    # LR stavke koje čine početno stanje DKA
+    dfa_start_state_lr_items = []
+
+    # red kojim obrađujemo LR stavke koje pripadaju početnom stanju DKA
+    dfa_start_state_queue = [e_nfa.start_state]
+
+    # skup u kojem se čuvaju sve otkrivene LR stavke radi izbjegavanja cirkularnih ovisnosti i beskonačne petlje kao rezultat
+    found_lr_items = set()
+    found_lr_items.add(e_nfa.start_state)
+
+    # računanje epsilon okruženja početnog stanja e-NKA
+    while len(dfa_start_state_queue) > 0:
+        curr_lr_item = dfa_start_state_queue.pop(0)
+        dfa_start_state_lr_items.append(curr_lr_item)
+
+        # provjera ima li trenutno stanje epsilon produkcije
+        if (curr_lr_item, "$") in e_nfa.transition_function:
+
+            # dodavanje svih desnih strana epsilon produkcija u red za obradu LR stavki
+            for lr_item in e_nfa.transition_function[(curr_lr_item, "$")]:
+                if lr_item not in found_lr_items:
+                    found_lr_items.add(lr_item)
+                    dfa_start_state_queue.append(lr_item)
+
+    # izgradnja početnog stanja DKA, stanja DKA čine indeksi LR stavki koje se nalaze unutar stanja DKA
+    dfa.start_state = []
+    for lr_item in dfa_start_state_lr_items:
+        dfa.start_state.append(lr_dict_item[lr_item])
+    dfa.start_state.sort()
+    dfa.start_state = tuple(dfa.start_state)
+    
+    # dodavanje početnog stanja DKA u skup svih stanja DKA
+    dfa_states.add(dfa.start_state)
+
+    # obrada svih stanja DKA kojeg trenutno gradimo
+    dfa_state_queue = [dfa.start_state]
+    while len(dfa_state_queue) > 0:
+        curr_dfa_state = dfa_state_queue.pop(0)
+
+        # računanje skupa simbola za koje trenutno stanje DKA ima definiran prijelaz
+        transition_symbols = set()
+        for component in curr_dfa_state:
+
+            # dekodiranje pojedine LR stavke unutar stanja DKA preko njenog jednistvenog indeksa
+            lr_item = lr_dict_index[component]
+            if lr_item.right_side != ("$",) and lr_item.index < len(lr_item.right_side):
+                transition_symbols.add(lr_item.right_side[lr_item.index])
+        
+        # pretvorba skupa simbola za koje je definiran prijelaz u listu, i potom sortiranje liste radi uniformnosti
+        transition_symbols = list(transition_symbols)
+        transition_symbols.sort()
+
+        # obrada prijelaza za svako stanje DKA
+        for symbol in transition_symbols:
+            pass
+
+    return dfa
 
 # funkcija koja gradi tablicu parsiranja na temelju danog DKA
 def build_parser_table() -> dict:
@@ -111,8 +228,10 @@ def build_parser_table() -> dict:
 # generiranje SA.py datoteke
 if __name__ == "__main__":
 
-    # varijable za čitanje 
+    # oznaka trenutnog nezavršnog znaka
     curr_nonterminal = None
+
+    # indeks pod kojim se dana produkcija pojavljuje u ulaznoj .san datoteci (bitno za razrješavanje Reduciraj/Reduciraj proturječja)
     production_index = 0
     
     # parsiranje ulaza sa stdin
@@ -152,9 +271,9 @@ if __name__ == "__main__":
     except EOFError:
         pass
 
+    # klasificiranje završnih i nezavršnih znakova u jedan riječnik
     for symbol in nonterminal_symbols:
         symbol_type[symbol] = Symbol_type.NONTERMINAL
-
     for symbol in terminal_symbols:
         symbol_type[symbol] = Symbol_type.TERMINAL
 
