@@ -50,6 +50,9 @@ starts_with = None
 lr_dict_item = {}
 lr_dict_index = {}
 
+# riječnik koji pod ključem tuple koji označava stanje DKA čuva redni broj tog stanja za gradnju parsera
+parser_states = {}
+
 # funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
 def fetch_end_symbol() -> End_symbol:
     return end_symbol
@@ -173,6 +176,9 @@ def build_dfa(e_nfa: Automata) -> Automata:
     found_lr_items = set()
     found_lr_items.add(e_nfa.start_state)
 
+    # trenutni indeks za stanja parsera
+    parser_index = 0
+
     # računanje epsilon okruženja početnog stanja e-NKA
     while len(dfa_start_state_queue) > 0:
         curr_lr_item = dfa_start_state_queue.pop(0)
@@ -197,6 +203,10 @@ def build_dfa(e_nfa: Automata) -> Automata:
     # dodavanje početnog stanja DKA u skup svih stanja DKA
     dfa_states.add(dfa.start_state)
 
+    # dodavanje početnog stanja DKA u skup stanja parsera
+    parser_states[dfa.start_state] = parser_index
+    parser_index += 1
+
     # obrada svih stanja DKA kojeg trenutno gradimo
     dfa_state_queue = [dfa.start_state]
     while len(dfa_state_queue) > 0:
@@ -217,7 +227,51 @@ def build_dfa(e_nfa: Automata) -> Automata:
 
         # obrada prijelaza za svako stanje DKA
         for symbol in transition_symbols:
-            pass
+
+            # lista svih komponenti novog stanja DKA
+            new_dfa_state_lr_items = []
+
+            # red za obradu LR stavki
+            lr_queue = []
+
+            # skup svih otkrivenih LR stavi
+            discovered_lr_items = set()
+
+            for component in curr_dfa_state:
+                
+                # dekodiranje pojedine LR stavke unutar stanja DKA preko njenog jednistvenog indeksa
+                lr_item = lr_dict_index[component]
+                if (lr_item, symbol) in e_nfa.transition_function:
+                    lr_queue.append(e_nfa.transition_function[(lr_item, symbol)][0])
+                    discovered_lr_items.add(e_nfa.transition_function[(lr_item, symbol)][0])
+
+            # obrada svih LR stavki koje su dijelom novog stanja DKA
+            while len(lr_queue) > 0:
+                curr_lr_item = lr_queue.pop(0)
+                new_dfa_state_lr_items.append(curr_lr_item)
+                
+                # računanje epsilon okruženja trenutne LR stavke
+                if (curr_lr_item, "$") in e_nfa.transition_function:
+                    for lr_item in e_nfa.transition_function[(curr_lr_item, "$")]:
+                        if lr_item not in discovered_lr_items:
+                            lr_queue.append(lr_item)
+
+            # gradnja novog stanja DKA
+            new_dfa_state = []
+            for lr_item in new_dfa_state_lr_items:
+                new_dfa_state.append(lr_dict_item[lr_item])
+            new_dfa_state.sort()
+            new_dfa_state = tuple(new_dfa_state)
+
+            # dodavanje odgovarajućeg prijelaza u funkciju prijelaza DKA
+            dfa.transition_function[curr_dfa_state, symbol] = new_dfa_state
+
+            # ako smo prvi put naišli na ovo stanje DKA, moramo ga registrirati
+            if new_dfa_state not in dfa_states:
+                dfa_states.add(new_dfa_state)
+                dfa_state_queue.append(new_dfa_state)
+                parser_states[new_dfa_state] = parser_index
+                parser_index += 1
 
     return dfa
 

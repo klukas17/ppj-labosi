@@ -66,6 +66,7 @@ def calculate_directly_starts_with(nonterminal_symbols: list, terminal_symbols: 
         for symbol in terminal_symbols:
             table[terminal][symbol] = False
 
+    # popunjavanje tablice na temelju produkcija i izračunatog skupa praznih znakova
     for nonterminal in productions:
         for production in productions[nonterminal]:
             if production[0] == ("$",):
