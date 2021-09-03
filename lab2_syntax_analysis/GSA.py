@@ -1,4 +1,5 @@
 from syn_utils import lr_item_utils
+from sys import stderr
 
 # enumeracija za tip znaka
 class Symbol_type():
@@ -33,11 +34,39 @@ class Reduce(Action):
         Action.__init__(self)
         self.left_side = left_side
         self.right_side = right_side
+    def __repr__(self) -> str:
+        ret_val = "REDUCE "
+        ret_val += self.left_side
+        ret_val += " ->"
+        for el in self.right_side:
+            ret_val += " " + el
+        return ret_val
 
 class Shift(Action):
-    def __init__(self, new_state: int):
+    def __init__(self, new_state: int, new_state_elements: tuple):
         Action.__init__(self)
         self.new_state = new_state
+        self.new_state_elements = new_state_elements
+    def __repr__(self) -> str:
+        ret_val = "SHIFT "
+        ret_val += str(self.new_state)
+        ret_val += " ->"
+        for el in self.new_state_elements:
+            ret_val += " " + str(el)
+        return ret_val
+
+class Put(Action):
+    def __init__(self, new_state: int, new_state_elements: tuple):
+        Action.__init__(self)
+        self.new_state = new_state
+        self.new_state_elements = new_state_elements
+    def __repr__(self) -> str:
+        ret_val = "PUT "
+        ret_val += str(self.new_state)
+        ret_val += " ->"
+        for el in self.new_state_elements:
+            ret_val += " " + str(el)
+        return ret_val   
 
 # funkcija za dohvaćanje pojedine LR stavke (objekti LR stavke su jedinstveni objekti -> obrazac singleton)
 def fetch_lr_item(left_side: str, right_side: tuple, index: int, follow_set: tuple) -> lr_item_utils.LR_item:
@@ -80,6 +109,9 @@ conflicts = []
 # jedinstvena varijabla pod kojom se čuva oznaka kraja niza
 end_symbol = End_symbol()
 
+# kombinacija stanja i ulaznog znaka za koju se prihvaća niz
+accepting_combination = None
+
 # funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
 def fetch_end_symbol() -> End_symbol:
     return end_symbol
@@ -116,9 +148,12 @@ def build_enfa() -> Automata:
                 found_lr_items.add(new_lr_state)
                 lr_queue.append(new_lr_state)
                 lr_items_list.append(new_lr_state)
-            if (curr_lr_state, curr_lr_state.right_side[curr_lr_state.index]) not in e_nfa.transition_function:
-                e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])] = []
-            e_nfa.transition_function[(curr_lr_state, curr_lr_state.right_side[curr_lr_state.index])].append(new_lr_state)
+            if curr_lr_state not in e_nfa.transition_function:
+                e_nfa.transition_function[curr_lr_state] = {}
+            if curr_lr_state.right_side[curr_lr_state.index] not in e_nfa.transition_function[curr_lr_state]:
+                e_nfa.transition_function[curr_lr_state][curr_lr_state.right_side[curr_lr_state.index]] = []
+            e_nfa.transition_function[curr_lr_state][curr_lr_state.right_side[curr_lr_state.index]].append(new_lr_state)
+            
 
         # ako se točka nalazi ispred nezavršnog znaka, potrebno je obraditi taj nezavršni znak i dodati nove prijelaze
         if curr_lr_state.index < len(curr_lr_state.right_side) and curr_lr_state.right_side != ("$",) and symbol_type[curr_lr_state.right_side[curr_lr_state.index]] == Symbol_type.NONTERMINAL:
@@ -172,9 +207,11 @@ def build_enfa() -> Automata:
                     found_lr_items.add(new_lr_state)
                     lr_queue.append(new_lr_state)
                     lr_items_list.append(new_lr_state)
-                if (curr_lr_state, "$") not in e_nfa.transition_function:
-                    e_nfa.transition_function[(curr_lr_state), "$"] = []
-                e_nfa.transition_function[(curr_lr_state, "$")].append(new_lr_state)
+                if curr_lr_state not in e_nfa.transition_function:
+                    e_nfa.transition_function[curr_lr_state] = {}
+                if "$" not in e_nfa.transition_function[curr_lr_state]:
+                    e_nfa.transition_function[curr_lr_state]["$"] = []
+                e_nfa.transition_function[curr_lr_state]["$"].append(new_lr_state)
 
     # izgradnja riječnika potrebnih za konstrukciju DKA
     for i in range(len(lr_items_list)):
@@ -209,10 +246,10 @@ def build_dfa(e_nfa: Automata) -> Automata:
         dfa_start_state_lr_items.append(curr_lr_item)
 
         # provjera ima li trenutno stanje epsilon produkcije
-        if (curr_lr_item, "$") in e_nfa.transition_function:
+        if curr_lr_item in e_nfa.transition_function and "$" in e_nfa.transition_function[curr_lr_item]:
 
             # dodavanje svih desnih strana epsilon produkcija u red za obradu LR stavki
-            for lr_item in e_nfa.transition_function[(curr_lr_item, "$")]:
+            for lr_item in e_nfa.transition_function[curr_lr_item]["$"]:
                 if lr_item not in found_lr_items:
                     found_lr_items.add(lr_item)
                     dfa_start_state_queue.append(lr_item)
@@ -265,9 +302,9 @@ def build_dfa(e_nfa: Automata) -> Automata:
                 
                 # dekodiranje pojedine LR stavke unutar stanja DKA preko njenog jednistvenog indeksa
                 lr_item = lr_dict_index[component]
-                if (lr_item, symbol) in e_nfa.transition_function:
-                    lr_queue.append(e_nfa.transition_function[(lr_item, symbol)][0])
-                    discovered_lr_items.add(e_nfa.transition_function[(lr_item, symbol)][0])
+                if lr_item in e_nfa.transition_function and symbol in e_nfa.transition_function[lr_item]:
+                    lr_queue.append(e_nfa.transition_function[lr_item][symbol][0])
+                    discovered_lr_items.add(e_nfa.transition_function[lr_item][symbol][0])
 
             # obrada svih LR stavki koje su dijelom novog stanja DKA
             while len(lr_queue) > 0:
@@ -275,8 +312,8 @@ def build_dfa(e_nfa: Automata) -> Automata:
                 new_dfa_state_lr_items.append(curr_lr_item)
                 
                 # računanje epsilon okruženja trenutne LR stavke
-                if (curr_lr_item, "$") in e_nfa.transition_function:
-                    for lr_item in e_nfa.transition_function[(curr_lr_item, "$")]:
+                if curr_lr_item in e_nfa.transition_function and "$" in e_nfa.transition_function[curr_lr_item]:
+                    for lr_item in e_nfa.transition_function[curr_lr_item]["$"]:
                         if lr_item not in discovered_lr_items:
                             lr_queue.append(lr_item)
 
@@ -288,7 +325,9 @@ def build_dfa(e_nfa: Automata) -> Automata:
             new_dfa_state = tuple(new_dfa_state)
 
             # dodavanje odgovarajućeg prijelaza u funkciju prijelaza DKA
-            dfa.transition_function[curr_dfa_state, symbol] = new_dfa_state
+            if curr_dfa_state not in dfa.transition_function:
+                dfa.transition_function[curr_dfa_state] = {}
+            dfa.transition_function[curr_dfa_state][symbol] = new_dfa_state
 
             # ako smo prvi put naišli na ovo stanje DKA, moramo ga registrirati
             if new_dfa_state not in dfa_states:
@@ -351,7 +390,71 @@ def build_parser_table(dfa: Automata) -> dict:
                 actions[symbol].append(Reduce(lr_item.left_side, lr_item.right_side))
 
         # dodavanje akcija pomaka
-        
+        if parser_state in dfa.transition_function:
+            for defined_transition in dfa.transition_function[parser_state]:
+                if symbol_type[defined_transition] == Symbol_type.TERMINAL:
+                    actions[defined_transition].append(Shift(parser_states[dfa.transition_function[parser_state][defined_transition]], dfa.transition_function[parser_state][defined_transition]))
+                elif symbol_type[defined_transition] == Symbol_type.NONTERMINAL:
+                    actions[defined_transition].append(Put(parser_states[dfa.transition_function[parser_state][defined_transition]], dfa.transition_function[parser_state][defined_transition]))
+
+        # zapis izračunatih pravila u tablicu parsera
+        for symbol in actions:
+
+            # za trenutno stanje parsera i dani simbol nije definirana akcija
+            if len(actions[symbol]) == 0:
+                continue
+
+            # za trenutno stanje parsera i dani simbol je definirana jednoznačna akcija
+            elif len(actions[symbol]) == 1:
+                parser_table[table_index][symbol] = actions[symbol][0]
+
+                # traženje kombinacije stanja i ulaznog znaka za prihvat niza
+                action = actions[symbol][0]
+                if isinstance(action, Reduce) and action.left_side == nonterminal_symbols[0]:
+                    accepting_combination = (table_index, symbol)
+
+            # za trenutno stanje parsera i dani simbol postoji nejednoznačnost
+            else:
+
+                # varijabla u kojoj pamtimo koju akciju ćemo odabrati
+                chosen_action = None
+                    
+                # varijabla u kojoj pratimo postoji li u skupu akcija koje se krše akcija pomaka
+                shift_found = False
+
+                # traženje akcije pomaka
+                for action in actions[symbol]:
+                    if isinstance(action, Shift):
+                        shift_found = True
+                        chosen_action = action
+                        break
+
+                # pomakni/reduciraj proturječje
+                if shift_found:
+                    stderr.write(f"shift/reduce conflict for parser state {table_index} and input symbol {symbol} between actions:\n")
+                    for action in actions[symbol]:
+                        stderr.write(f" {str(action)}\n")
+                    stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
+
+                # reduciraj/reduciraj proturječje
+                else:
+
+                    # varijabla kojom pratimo prioritet trenutno pronađene najprioritetnije produkcije
+                    current_index = None
+
+                    for action in actions[symbol]:
+                        for production in productions[action.left_side]:
+                            if production[0] == action.right_side:
+                                if current_index is None or current_index > production[1]:
+                                    chosen_action = action
+                                    current_index = production[1]
+
+                    stderr.write(f"reduce/reduce conflict for parser state {table_index} and input symbol {symbol} between actions:\n")
+                    for action in actions[symbol]:
+                        stderr.write(f" {str(action)}\n")
+                    stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
+
+                parser_table[table_index][symbol] = chosen_action
 
     return parser_table
 
