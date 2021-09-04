@@ -1,4 +1,5 @@
 from sys import path, stderr
+from typing import Union
 old_path = path[0]
 path[0] = path[0][:path[0].rfind("/")]
 
@@ -8,6 +9,20 @@ class End_symbol():
         self.name = "end_symbol"
     def __repr__(self) -> str:
         return "END_SYMBOL"
+
+# dekorator koji omotava oznaku kraja niza i čini ju leksičkom jedinkom
+class End_symbol_decorator():
+    def __init__(self):
+        self.symbol = fetch_end_symbol()
+    def __repr__(self) -> str:
+        return "END_SYMBOL"
+
+# oznaka kraja stoga
+class Stack_end():
+    def __init__(self):
+        self.name = "stack_end"
+    def __repr__(self) -> str:
+        return "STACK_END"
 
 # enumeracija za tip znaka
 class Symbol_type():
@@ -44,20 +59,64 @@ class Put(Action):
         Action.__init__(self)
         self.new_state = new_state
     def __repr__(self) -> str:
-        return f"PUT {self.new_state}"  
+        return f"PUT {self.new_state}"
+
+# apstraktna klasa za modeliranje čvora generativnog stabla
+class Abs_Node():
+    def __init__(self):
+        pass
+
+# klasa za modeliranje unutarnjeg čvora generativnog stabla
+class Node(Abs_Node):
+    def __init__(self, symbol: str):
+        Abs_Node.__init__(self)
+        self.symbol = symbol
+        self.children = []
+    def __repr__(self) -> str:
+        return self.symbol
+
+# klasa za modeliranje lista stabla
+class Leaf(Abs_Node):
+    def __init__(self, symbol: str, line: int, lexical_unit: str):
+        Abs_Node.__init__(self)
+        self.symbol = symbol
+        self.line = line
+        self.lexical_unit = lexical_unit
+    def __repr__(self) -> str:
+        return self.symbol
+
+# klasa za modeliranje praznog lista stabla (epsilon produkcija)
+class Empty_Leaf(Abs_Node):
+    def __init__(self):
+        Abs_Node.__init__(self)
+    def __repr__(self) -> str:
+        return "$"
+
+# klasa za modeliranje sintaksne greške
+class Error():
+    def __init__(self):
+        pass
 
 # globalne varijable
 terminal_symbols = []
 nonterminal_symbols = []
 synchronisation_symbols = []
 acceptance_state = []
-parser_table = {}
 symbol_type = {}
+parser_table = {}
+stack = []
+uniform_units = None
+errors = []
 end_symbol = End_symbol()
+stack_end = Stack_end()
 
 # funkcija kojom se dohvaća jedinstven objekt koji označava kraj niza -> obrazac singleton
 def fetch_end_symbol() -> End_symbol:
     return end_symbol
+
+# funkcija kojom se dohvaća jedinstven objekt koji označava kraj stoga
+def fetch_stack_end() -> Stack_end:
+    return stack_end
 
 # funkcija za uklanjanje oznaka kraja reda s pročitaneog linije u datoteci
 def remove_end_of_line_character(line: str) -> str:
@@ -137,10 +196,130 @@ def read_parsing_table() -> None:
                 parser_state = int(line)
                 parser_table[parser_state] = {}
 
+# funkcija dohvaća sljedeću leksičku jedinku
+def fetch_next_uniform_unit() -> Union[Leaf, End_symbol]:
+    global uniform_units
+
+    if len(uniform_units) > 0:
+        ret_val = uniform_units.pop(0)
+        return ret_val
+
+    else:
+        return End_symbol_decorator()
+
+# funkcija koja čita niz uniformnih jedinki i na temelju njih gradi generativno stablo
+def build_generative_tree() -> Abs_Node:
+    
+    global parser_table
+    global stack
+    global error
+    
+    uniform_unit = None
+
+    while True:
+        
+        # potrebno dohvatiti sljedeću uniformnu jedinku
+        if uniform_unit is None:
+            uniform_unit = fetch_next_uniform_unit()
+
+        # za trenutnu leksičku jedinku i za trenutno stanje parsera definirana akcija
+        if uniform_unit.symbol in parser_table[stack[-1]]:
+            action = parser_table[stack[-1]][uniform_unit.symbol]
+
+            if isinstance(action, Shift):
+                stack.append(uniform_unit)
+                uniform_unit = None
+                stack.append(action.new_state)
+
+            elif isinstance(action, Reduce):
+
+                # završetak parsiranja
+                if action.left_side == nonterminal_symbols[0]:
+                    return stack[-2]
+
+                # stvaranje novog unutarnjeg čvora
+                new_symbol = Node(action.left_side)
+
+                # elementi desne strane produkcije čine djecu novog unutarnjeg čvora
+                for i in range(len(stack) - 2, len(stack) - 2 - 2 * action.right_side_length, -2):
+                    new_symbol.children.append(stack[i])
+
+                # ako novi unutarnji čvor nema djecu, tj. riječ je o epsilon produkciji
+                if len(new_symbol.children) == 0:
+                    new_symbol.children =  [Empty_Leaf()]
+
+                # inače treba obrnuti poredak djece jer se na čitaju zdesna nalijevo
+                else:
+                    new_symbol.children = new_symbol.children[::-1]
+
+                # micanje znakova sa stoga
+                stack = stack[:len(stack) - 2 * action.right_side_length]
+                stack.append(new_symbol)
+                    
+                # akcija stavljanja oznake stanja na stog
+                if action.left_side in parser_table[stack[-2]] and isinstance(parser_table[stack[-2]][action.left_side], Put):
+
+                    # obavljanje akcije stavljanja
+                    stack.append(parser_table[stack[-2]][action.left_side].new_state)
+
+                # oporavak od pogreške
+                else:
+                    pass
+
+        # oporavak od pogreške
+        else:
+            x = 0
+            # TODO
+
+# funkcija rekurzivno printa generativno stablo
+def print_tree(curr_root: Node, indent: int):
+
+    print(indent*' ', end='')
+    
+    if isinstance(curr_root, Node):
+        print(curr_root.symbol)
+        for el in curr_root.children:
+            print_tree(el, indent + 1)
+
+    elif isinstance(curr_root, Leaf):
+        print(f"{curr_root.symbol} {curr_root.line} {curr_root.lexical_unit}")
+
+    elif isinstance(curr_root, Empty_Leaf):
+        print("$")
+
 # čitanje niza leksičkih jedinki i gradnja sintaksnog stabla
 if __name__ == "__main__":
     
     # deserijalizacija tablice parsiranja
     read_parsing_table()
 
-    pass
+    # inicijalizacija stoga
+    stack.append(fetch_stack_end())
+    stack.append(0)
+
+    uniform_units = []
+    # čitanje ulaznog niza
+    try:
+        while True:
+            line = input()
+            if line == "":
+                break
+
+            line = line.split(sep=" ", maxsplit=1)
+            lexical_unit = line[0]
+            line = line[1]
+            line = line.split(sep=" ", maxsplit=1)
+            ind = int(line[0])
+            line = line[1]
+
+            uniform_units.append(Leaf(lexical_unit, ind, line))
+
+    except EOFError:
+        pass
+
+    generative_tree_root = build_generative_tree()
+    print_tree(generative_tree_root, 0)
+
+    # ispis grešaka
+    if len(errors) > 0:
+        pass
