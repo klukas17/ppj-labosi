@@ -526,7 +526,7 @@ if __name__ == "__main__":
     # stvaranje tablice parsiranja na temelju DKA
     parser_table = build_parser_table(dfa)
 
-    file = open("analizator/parsing_table.txt", "w")
+    file = open("analizator/parser_table.txt", "w")
 
     file.write("%V")
     
@@ -553,14 +553,21 @@ if __name__ == "__main__":
 
     file.write("\n")
 
+    end = "-"
+    while end in terminal_symbols or end in nonterminal_symbols:
+        end += "-"
+
+    file.write(end)
+    file.write("\n")
+
     for state in parser_table:
         file.write(str(state) + "\n")
         for transition in parser_table[state]:
             if parser_table[state][transition] is not None:
                 if transition != fetch_end_symbol():
-                    file.write(" " + transition + " ")
+                    file.write(f" {transition} ")
                 else:
-                    file.write(" - ")
+                    file.write(f" {end} ")
                 action = parser_table[state][transition]
                 if isinstance(action, Reduce):
                     file.write("r{")
