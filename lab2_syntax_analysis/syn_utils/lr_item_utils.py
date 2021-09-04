@@ -88,14 +88,12 @@ def calculate_starts_with(nonterminal_symbols: list, terminal_symbols: list, pro
         table[symbol][symbol] = True
 
     # određivanje tranzitivnog okruženja relacije IzravnoZapočinjeZnakom
-    for symbol1 in table:
-        for symbol2 in table[symbol1]:
-            if symbol1 == symbol2:
-                continue
-            if table[symbol1][symbol2]:
-                for symbol3 in table[symbol2]:
-                    if table[symbol2][symbol3]:
-                        table[symbol1][symbol3] = True
+    # ovdje je iskorišten Warshallov algoritam za pronalazak tranzitivnog okruženja relacije - izvor: https://www.geeksforgeeks.org/transitive-closure-of-a-graph/
+    symbols = list(table.keys())
+    for k in symbols:
+        for i in symbols:
+            for j in symbols:
+                table[i][j] = table[i][j] or table[i][k] and table[k][j]
 
 # funkcija računa relaciju ZAPOČINJE za dane produkcije gramatike
 def calculate_relation_starts(nonterminal_symbols: list, terminal_symbols: list, productions: dict) -> Tuple[set, dict]:

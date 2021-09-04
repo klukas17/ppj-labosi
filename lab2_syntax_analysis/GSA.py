@@ -164,10 +164,10 @@ def build_enfa() -> Automata:
                 follow_set = set()
                 curr_symbol = curr_lr_state.right_side[index]
                 for s in starts_with[curr_symbol]:
-                    if starts_with[curr_symbol][s]:
+                    if starts_with[curr_symbol][s]: # and symbol_type[s] == Symbol_type.TERMINAL:
                         follow_set.add(s) 
                 symbol_set = symbol_set.union(follow_set)
-                if curr_symbol not in empty_nonterminal_symbols:
+                if curr_symbol not in empty_nonterminal_symbols: # len(follow_set) > 0
                     end_reached = True
                 index += 1
             if not end_reached:
@@ -451,7 +451,7 @@ def build_parser_table(dfa: Automata) -> dict:
 
                 parser_table[table_index][symbol] = chosen_action
 
-    return parser_table
+    return parser_table 
 
 # generiranje SA.py datoteke
 if __name__ == "__main__":

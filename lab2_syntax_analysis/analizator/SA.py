@@ -14,13 +14,17 @@ class End_symbol():
 class End_symbol_decorator():
     def __init__(self):
         self.symbol = fetch_end_symbol()
+        self.line = None
+        self.lexical_unit = "EOF"
     def __repr__(self) -> str:
         return "END_SYMBOL"
 
 # oznaka kraja stoga
 class Stack_end():
     def __init__(self):
-        self.name = "stack_end"
+        self.symbol = "stack_end"
+        #self.line = "EOF"
+        self.lexical_unit = "EOF"
     def __repr__(self) -> str:
         return "STACK_END"
 
@@ -95,7 +99,10 @@ class Empty_Leaf(Abs_Node):
 # klasa za modeliranje sintaksne greške
 class Error():
     def __init__(self):
-        pass
+        self.line = None
+        self.uniform = None
+        self.lexical_unit = None
+        self.expected = None
 
 # globalne varijable
 terminal_symbols = []
@@ -107,6 +114,7 @@ parser_table = {}
 stack = []
 uniform_units = None
 errors = []
+last_line = None                # za dodjelu broja retka oznaci kraja niza
 end_symbol = End_symbol()
 stack_end = Stack_end()
 
@@ -199,20 +207,24 @@ def read_parsing_table() -> None:
 # funkcija dohvaća sljedeću leksičku jedinku
 def fetch_next_uniform_unit() -> Union[Leaf, End_symbol]:
     global uniform_units
+    global last_line
 
     if len(uniform_units) > 0:
         ret_val = uniform_units.pop(0)
+        last_line = ret_val.line
         return ret_val
 
     else:
-        return End_symbol_decorator()
+        ret_val = End_symbol_decorator()
+        ret_val.line = last_line + 1
+        return ret_val
 
 # funkcija koja čita niz uniformnih jedinki i na temelju njih gradi generativno stablo
 def build_generative_tree() -> Abs_Node:
     
     global parser_table
     global stack
-    global error
+    global errors
     
     uniform_unit = None
 
@@ -256,20 +268,34 @@ def build_generative_tree() -> Abs_Node:
                 stack = stack[:len(stack) - 2 * action.right_side_length]
                 stack.append(new_symbol)
                     
-                # akcija stavljanja oznake stanja na stog
-                if action.left_side in parser_table[stack[-2]] and isinstance(parser_table[stack[-2]][action.left_side], Put):
-
-                    # obavljanje akcije stavljanja
-                    stack.append(parser_table[stack[-2]][action.left_side].new_state)
-
-                # oporavak od pogreške
-                else:
-                    pass
+                # obavljanje akcije stavljanja
+                stack.append(parser_table[stack[-2]][action.left_side].new_state)
 
         # oporavak od pogreške
         else:
-            x = 0
-            # TODO
+
+            # zapis podatak o pogrešci u poseban objekt
+            err = Error()
+            err.line = stack[-2].line
+            err.uniform = stack[-2].symbol
+            err.lexical_unit = stack[-2].lexical_unit
+            expected = []
+            for symbol in parser_table[stack[-1]]:
+                if not isinstance(parser_table[stack[-1]][symbol], Put):
+                    if symbol == fetch_end_symbol():
+                        expected.append("END_SYMBOL")
+                    else:
+                        expected.append(symbol)
+            err.expected = ' | '.join(expected)
+            errors.append(err)
+
+            # pronalazak sinkronizacijskog znaka
+            while uniform_unit.symbol not in synchronisation_symbols:
+                uniform_unit = fetch_next_uniform_unit()
+
+            # odbacivanje znakova sa stoga
+            while len(stack) > 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
+                stack = stack[:len(stack)-2]
 
 # funkcija rekurzivno printa generativno stablo
 def print_tree(curr_root: Node, indent: int):
@@ -322,4 +348,6 @@ if __name__ == "__main__":
 
     # ispis grešaka
     if len(errors) > 0:
-        pass
+        stderr.write("\nSYNTACTIC ERRORS:\n")
+        for err in errors:
+            stderr.write(f" at line {err.line} expected uniform symbol from {err.expected} but read uniform symbol {err.uniform} as a lexical unit {err.lexical_unit}\n\n")
