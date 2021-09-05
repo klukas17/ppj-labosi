@@ -23,7 +23,7 @@ class End_symbol_decorator():
 class Stack_end():
     def __init__(self):
         self.symbol = "stack_end"
-        #self.line = "EOF"
+        self.line = "EOF"
         self.lexical_unit = "EOF"
     def __repr__(self) -> str:
         return "STACK_END"
