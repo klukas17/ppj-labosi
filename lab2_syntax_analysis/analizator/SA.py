@@ -234,6 +234,11 @@ def build_generative_tree() -> Abs_Node:
         if uniform_unit is None:
             uniform_unit = fetch_next_uniform_unit()
 
+        # ! provjeriti ispravnost
+        # zbog sintaksne greške nije moguće izgraditi generativno stablo
+        if uniform_unit.symbol == fetch_end_symbol() and len(stack) == 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
+            exit()
+
         # za trenutnu leksičku jedinku i za trenutno stanje parsera definirana akcija
         if uniform_unit.symbol in parser_table[stack[-1]]:
             action = parser_table[stack[-1]][uniform_unit.symbol]
@@ -296,6 +301,11 @@ def build_generative_tree() -> Abs_Node:
             # odbacivanje znakova sa stoga
             while len(stack) > 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
                 stack = stack[:len(stack)-2]
+
+            # ! provjeriti ispravnost
+            # za sinkronizacijski simbol nije moguće nastaviti graditi generativno stablo
+            if uniform_unit.symbol in synchronisation_symbols and uniform_unit.symbol not in parser_table[stack[-1]] and len(stack) == 2:
+                uniform_unit = None
 
 # funkcija rekurzivno printa generativno stablo
 def print_tree(curr_root: Node, indent: int):
