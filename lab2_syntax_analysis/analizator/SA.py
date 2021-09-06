@@ -38,6 +38,7 @@ class Action():
     def __init__(self):
         pass
 
+# klasa za akciju redukcije
 class Reduce(Action):
     def __init__(self, left_side: str, right_side: list):
         Action.__init__(self)
@@ -51,6 +52,7 @@ class Reduce(Action):
         ret_val += " {len=" + str(self.right_side_length) + "}"
         return ret_val
 
+# klasa za akciju pomaka
 class Shift(Action):
     def __init__(self, new_state: int):
         Action.__init__(self)
@@ -58,6 +60,7 @@ class Shift(Action):
     def __repr__(self) -> str:
         return f"SHIFT {self.new_state}"
 
+# klasa za akciju stavljanja nezavršnog znaka na stog nakon primjene redukcije
 class Put(Action):
     def __init__(self, new_state: int):
         Action.__init__(self)
@@ -114,7 +117,7 @@ parser_table = {}
 stack = []
 uniform_units = None
 errors = []
-last_line = None                # za dodjelu broja retka oznaci kraja niza
+last_line = None # za dodjelu broja retka oznaci kraja niza
 end_symbol = End_symbol()
 stack_end = Stack_end()
 
@@ -237,7 +240,7 @@ def build_generative_tree() -> Abs_Node:
         # ! provjeriti ispravnost
         # zbog sintaksne greške nije moguće izgraditi generativno stablo
         if uniform_unit.symbol == fetch_end_symbol() and len(stack) == 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
-            exit()
+            return None
 
         # za trenutnu leksičku jedinku i za trenutno stanje parsera definirana akcija
         if uniform_unit.symbol in parser_table[stack[-1]]:
@@ -245,11 +248,14 @@ def build_generative_tree() -> Abs_Node:
 
             if isinstance(action, Shift):
                 stack.append(uniform_unit)
+
+                # brisanje uniformne jedinke, čime osiguravamo da će se novim dohvatom dohvatiti sljedeća jedinka u nizu
                 uniform_unit = None
                 stack.append(action.new_state)
 
             elif isinstance(action, Reduce):
 
+                # ! provjeriti ispravnost
                 # završetak parsiranja
                 if action.left_side == nonterminal_symbols[0]:
                     return stack[-2]
@@ -294,10 +300,12 @@ def build_generative_tree() -> Abs_Node:
             err.expected = ' | '.join(expected)
             errors.append(err)
 
+            # ! provjeriti ispravnost
             # pronalazak sinkronizacijskog znaka
             while uniform_unit.symbol not in synchronisation_symbols:
                 uniform_unit = fetch_next_uniform_unit()
 
+            # ! provjeriti ispravnost
             # odbacivanje znakova sa stoga
             while len(stack) > 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
                 stack = stack[:len(stack)-2]
@@ -354,7 +362,8 @@ if __name__ == "__main__":
         pass
 
     generative_tree_root = build_generative_tree()
-    print_tree(generative_tree_root, 0)
+    if generative_tree_root is not None:
+        print_tree(generative_tree_root, 0)
 
     # ispis grešaka
     if len(errors) > 0:

@@ -164,10 +164,10 @@ def build_enfa() -> Automata:
                 follow_set = set()
                 curr_symbol = curr_lr_state.right_side[index]
                 for s in starts_with[curr_symbol]:
-                    if starts_with[curr_symbol][s]: # and symbol_type[s] == Symbol_type.TERMINAL:
+                    if starts_with[curr_symbol][s]:
                         follow_set.add(s) 
                 symbol_set = symbol_set.union(follow_set)
-                if curr_symbol not in empty_nonterminal_symbols: # len(follow_set) > 0
+                if curr_symbol not in empty_nonterminal_symbols:
                     end_reached = True
                 index += 1
             if not end_reached:
@@ -179,7 +179,7 @@ def build_enfa() -> Automata:
             # dodavanje epsilon prijelaza u izračunatu LR stavku
             for production in productions[curr_lr_state.right_side[curr_lr_state.index]]:
 
-                # production je prethdno bio tuple, gdje je na nultom mjestu sama produkcija, a na prvom redni broj pojavljivanja produkcije u .san datoteci
+                # production je prethodno bio tuple, gdje je na nultom mjestu sama produkcija, a na prvom redni broj pojavljivanja produkcije u .san datoteci
                 production = production[0]
 
                 # sortiranje novog skupa znakova leksikografski
@@ -194,6 +194,7 @@ def build_enfa() -> Automata:
                 if end_symbol_in_set:
                     symbol_set.append(fetch_end_symbol())
 
+                # gradnja novih LR stavki
                 new_lr_state = fetch_lr_item(curr_lr_state.right_side[curr_lr_state.index], production, 0, tuple(symbol_set))
                 if new_lr_state not in found_lr_items:
                     found_lr_items.add(new_lr_state)
@@ -434,21 +435,35 @@ def build_parser_table(dfa: Automata) -> dict:
                 # reduciraj/reduciraj proturječje
                 else:
 
-                    # varijabla kojom pratimo prioritet trenutno pronađene najprioritetnije produkcije
-                    current_index = None
-
+                    # postoji mogućnost da su iste akcije redukcije, koje dolaze iz različitih izvora, registrirane kao različite
+                    reduction_set = set()
                     for action in actions[symbol]:
-                        for production in productions[action.left_side]:
-                            if production[0] == action.right_side:
-                                if current_index is None or current_index > production[1]:
-                                    chosen_action = action
-                                    current_index = production[1]
+                        reduction_set.add((action.left_side, action.right_side))
 
-                    stderr.write(f"reduce/reduce conflict for state {table_index} and input symbol {symbol} between actions:\n")
-                    for action in actions[symbol]:
-                        stderr.write(f" {str(action)}\n")
-                    stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
+                    # ipak nije došlo do proturječja, biramo prvu akciju koja je jednaka svim drugima u listi
+                    if len(reduction_set) == 1:
+                        chosen_action = actions[symbol][0]
 
+                    # uistinu postoji proturječje
+                    else:
+
+                        # varijabla kojom pratimo prioritet trenutno pronađene najprioritetnije produkcije
+                        current_index = None
+
+                        for action in actions[symbol]:
+                            for production in productions[action.left_side]:
+                                if production[0] == action.right_side:
+                                    if current_index is None or current_index > production[1]:
+                                        chosen_action = action
+                                        current_index = production[1]
+
+                        # zapis podataka o proturječju na stderr
+                        stderr.write(f"reduce/reduce conflict for state {table_index} and input symbol {symbol} between actions:\n")
+                        for action in actions[symbol]:
+                            stderr.write(f" {str(action)}\n")
+                        stderr.write(f"solved in favor of action {str(chosen_action)}\n\n")
+
+                # o kojem god tipu proturječja je bila riječ, ovdje se odabrana akcija pohranjuje u tablicu parsera
                 parser_table[table_index][symbol] = chosen_action
 
     return parser_table 
@@ -526,6 +541,7 @@ if __name__ == "__main__":
     # stvaranje tablice parsiranja na temelju DKA
     parser_table = build_parser_table(dfa)
 
+    # serijalizacija tablice parsiranja
     file = open("analizator/parser_table.txt", "w")
 
     file.write("%V")
