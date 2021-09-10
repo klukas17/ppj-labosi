@@ -287,9 +287,9 @@ def build_generative_tree() -> Abs_Node:
 
             # zapis podatak o pogrešci u poseban objekt
             err = Error()
-            err.line = stack[-2].line
-            err.uniform = stack[-2].symbol
-            err.lexical_unit = stack[-2].lexical_unit
+            err.line = uniform_unit.line
+            err.uniform = uniform_unit.symbol
+            err.lexical_unit = uniform_unit.lexical_unit
             expected = []
             for symbol in parser_table[stack[-1]]:
                 if not isinstance(parser_table[stack[-1]][symbol], Put):
