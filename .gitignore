@@ -11,5 +11,17 @@ lab2_syntax_analysis/analizator/parser_table.txt
 lab2_syntax_analysis/testovi
 lab2_syntax_analysis/autograder.py
 lab3_semantic_analysis/testovi
+lab3_semantic_analysis/.vscode
+lab3_semantic_analysis/lex_utils
+lab3_semantic_analysis/syn_utils
+lab3_semantic_analysis/GLA.py
+lab3_semantic_analysis/GSA.py
+lab3_semantic_analysis/LA.py
+lab3_semantic_analysis/SA.py
+lab3_semantic_analysis/parser_table.txt
+lab3_semantic_analysis/ppjC.lan
+lab3_semantic_analysis/ppjC.san
+lab3_semantic_analysis/program.c
+lab3_semantic_analysis/rules.txt
 lab4_code_generation/testovi
 
