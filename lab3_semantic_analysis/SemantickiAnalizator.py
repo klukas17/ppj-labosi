@@ -131,6 +131,20 @@ def read_generative_tree() -> None:
     except EOFError:
         pass
 
+# funkcija za ispis produkcije u kojoj je otkrivena semantička greška
+def print_error(node: Node):
+    error_message = ""
+    error_message += node.symbol
+    error_message += " ::="
+    for child in node.children:
+        error_message += " "
+        if isinstance(child, Leaf):
+            error_message += f'{child.symbol}({child.line},{child.lexical_unit})'
+        elif isinstance(child, Node):
+            error_message += child.symbol
+    print(error_message)
+    exit()
+
 def provjeri_primarni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
@@ -145,8 +159,7 @@ def provjeri_primarni_izraz(node: Node):
     elif children == ["BROJ"]:
         value = int(node.lexical_unit) # ! TESTIRATI
         if value < -2**31 or value > 2**31 - 1: 
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -154,11 +167,9 @@ def provjeri_primarni_izraz(node: Node):
     elif children == ["ZNAK"]:
         value = node.lexical_unit # ! TESTIRATI
         if len(value) > 1 and value[0] == "\\" and value[1] not in ["t", "n", "0", "'", "\"", "\\"]:
-            pass
-            # TODO greška
+            print_error(node)
         elif len(value) == 1 and (ord(value) < 0 or ord(value) > 255):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Char()
         node.attributes["l-izraz"] = 0
@@ -172,8 +183,7 @@ def provjeri_primarni_izraz(node: Node):
             else:
                 i += 1
                 if value[i] not in ["t", "n", "0", "'", "\"", "\\"]:
-                    pass
-                    # TODO greška
+                    print_error(node)
                 else:
                     i += 1
 
@@ -202,12 +212,10 @@ def provjeri_postfiks_izraz(node: Node):
         if isinstance(node.children[0].attributes["tip"], Array):
             X = node.children[0].attributes["tip"].primitive
         else:
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = X
         node.attributes["l-izraz"] = 1 if not isinstance(X, Const) else 0
@@ -220,11 +228,9 @@ def provjeri_postfiks_izraz(node: Node):
             if isinstance(funct.params, Void): # and not isinstance(funct.ret_val, Void)
                 pov = funct.ret_val
             else:
-                pass
-                # TODO greška
+                print_error(node)
         else:
-            pass
-            # TODO greška
+            print_error(node)
         
         node.attributes["tip"] = pov
         node.attributes["l-izraz"] = 0
@@ -237,17 +243,14 @@ def provjeri_postfiks_izraz(node: Node):
             funct = node.children[0].attributes["tip"]
             pov = funct.ret_val
             if len(node.children[2].attributes["tipovi"]) != len(funct.params):
-                pass
-                # TODO greška
+                print_error(node)
             else:
                 for i in range(len(node.children[2].attributes["tipovi"])):
                     if not check_types(node.children[2].attributes["tipovi"][i], funct.params[i]):
-                        pass
-                        # TODO greška
+                        print_error(node)
 
         else:
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = pov
         node.attributes["l-izraz"] = 0
@@ -257,8 +260,7 @@ def provjeri_postfiks_izraz(node: Node):
         provjeri_postfiks_izraz(node.children[0])
         if not node.children[0].attributes["l-izraz"] == 1 or \
            not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -292,8 +294,7 @@ def provjeri_unarni_izraz(node: Node):
          children == ["OP_DEC", "<unarni_izraz>"]:
         provjeri_unarni_izraz(node.children[1])
         if node.children[1].attributes["l-izraz"] != 1 or not check_types(node.children[1].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -301,8 +302,7 @@ def provjeri_unarni_izraz(node: Node):
     elif children == ["<unarni_operator>", "<cast_izraz>"]:
         provjeri_cast_izraz(node.children[1])
         if not check_types(node.children[1].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -324,8 +324,7 @@ def provjeri_cast_izraz(node: Node):
         provjeri_ime_tipa(node.children[1])
         provjeri_cast_izraz(node.children[3])
         if not check_cast(node.children[3].attributes["tip"], node.children[1].attributes["tip"]):
-            pass
-            # TODO greška
+            print_error(node)
         
         node.attributes["tip"] = node.children[1].attributes["tip"]
         node.attributes["l-izraz"] = 0
@@ -342,8 +341,7 @@ def provjeri_ime_tipa(node: Node):
     elif children == ["KR_CONST", "<specifikator_tipa>"]:
         provjeri_specifikator_tipa(node.children[1])
         if isinstance(node.children[1].attributes["tip"], Void):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Const(node.children[1].attributes["tip"])
 
@@ -375,12 +373,10 @@ def provjeri_multiplikativni_izraz(node: Node):
          children == ["<multiplikativni izraz>", "OP_MOD", "<cast_izraz>"]:
         provjeri_multiplikativni_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_cast_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -399,12 +395,10 @@ def provjeri_aditivni_izraz(node: Node):
          children == ["<aditivni_izraz", "MINUS", "<multiplikativni_izraz>"]:
         provjeri_aditivni_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_multiplikativni_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -425,12 +419,10 @@ def provjeri_odnosni_izraz(node: Node):
          children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
         provjeri_odnosni_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_aditivni_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -449,12 +441,10 @@ def provjeri_jednakosni_izraz(node: Node):
          children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
         provjeri_jednakosni_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_odnosni_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -472,12 +462,10 @@ def provjeri_bin_i_izraz(node: Node):
     elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
         provjeri_bin_i_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_jednakosni_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -495,12 +483,10 @@ def provjeri_bin_xili_izraz(node: Node):
     elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
         provjeri_bin_xili_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_bin_i_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -518,12 +504,10 @@ def provjeri_bin_ili_izraz(node: Node):
     elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
         provjeri_bin_ili_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_bin_xili_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -541,12 +525,10 @@ def provjeri_log_i_izraz(node: Node):
     elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
         provjeri_log_i_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_bin_ili_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -564,12 +546,10 @@ def provjeri_log_ili_izraz(node: Node):
     elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
         provjeri_log_ili_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
         provjeri_log_i_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO error
+            print_error(node)
 
         node.attributes["tip"] = Int()
         node.attributes["l-izraz"] = 0
@@ -587,12 +567,10 @@ def provjeri_izraz_pridruzivanja(node: Node):
     elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
         provjeri_postfiks_izraz(node.children[0])
         if not node.children[0].attributes["l-izraz"] == 1:
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_izraz_pridruzivanja(node.children[2])
         if not check_types(node.children[2].attributes["tip"], node.children[0].attributes["tip"]):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = node.chilren[0].attributes["tip"]
         node.attributes["l-izraz"] = 0
@@ -674,15 +652,13 @@ def provjeri_naredba_grananja(node: Node):
     if children == ["KR_IF", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_naredba(node.children[4])
 
     elif children == ["KR_IF", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>", "KR_ELSE", "<naredba>"]:
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_naredba(node.children[4])
         provjeri_naredba(node.children[6])
 
@@ -693,24 +669,21 @@ def provjeri_naredba_petlje(node: Node):
     if children == ["KR_WHILE", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_naredba(node.children[4])
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz_naredba(node.children[2])
         provjeri_izraz_naredba[node.children[3]]
         if not check_types(node.children[3].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_naredba(node.children[5])
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "izraz", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz_naredba(node.children[2])
         provjeri_izraz_naredba[node.children[3]]
         if not check_types(node.children[3].attributes["tip"], Int()):
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_izraz(node.children[4])
         provjeri_naredba(node.children[6])
 
@@ -759,44 +732,36 @@ def provjeri_definicija_funkcije(node: Node):
     if children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "KR_VOID", "D_ZAGRADA", "<slozena_naredba>"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance(node.children[0].attributes["tip"], Const()):
-            pass
-            # TODO greška
+            print_error(node)
         new_funct_name = node.children[1].lexical_unit
         if new_funct_name in function_definitions:
-            pass
-            # TODO greška
+            print_error(node)
         if new_funct_name in function_declarations:
             existing_function = function_declarations[new_funct_name]
             if not isinstance(existing_function.params, Void) or \
                type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
-                pass
-                # TODO greška
+                print_error(node)
         function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(Void(), node.children[0].attributes["tip"])
         provjeri_slozena_naredba(node.children[5])
 
     elif children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA", "<slozena_naredba>"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance(node.children[0].attributes["tip"], Const()):
-            pass
-            # TODO greška
+            print_error(node)
         new_funct_name = node.children[1].lexical_unit
         if new_funct_name in function_definitions:
-            pass
-            # TODO greška
+            print_error(node)
         provjeri_lista_parametara(node.children[3])
         if new_funct_name in function_declarations:
             existing_function = function_declarations[new_funct_name]
             if type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
-                pass
-                # TODO greška
+                print_error(node)
             if len(existing_function.params) != len(node.children[3].attributes["tipovi"]):
-                pass
-                # TODO greška
+                print_error(node)
             else:
                 for i in range(len(existing_function.params)):
                     if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
-                        pass
-                        # TODO greška
+                        print_error(node)
         function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(node.children[3].attributes["tipov"], node.children[0].attributes["tip"])
         provjeri_slozena_naredba(node.children[5])
 
@@ -814,8 +779,7 @@ def provjeri_lista_parametara(node: Node):
         provjeri_lista_parametara(node.children[0])
         provjeri_deklaracija_parametra(node.children[2])
         if node.children[2].attributes["ime"] in node.children[0].attributes["imena"]:
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
         node.attributes["imena"] = node.children[0].attributes["imena"] + [node.children[2].attributes["ime"]]
@@ -827,8 +791,7 @@ def provjeri_deklaracija_parametra(node: Node):
     if children == ["<ime_tipa>", "IDN"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = node.children[0].attributes["tip"]
         node.attributes["ime"] = node.children[1].lexical_unit
@@ -836,8 +799,7 @@ def provjeri_deklaracija_parametra(node: Node):
     elif children == ["<ime_tipa>", "IDN", "L_UGL_ZAGRADA", "D_UGL_ZAGRADA"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
-            pass
-            # TODO greška
+            print_error(node)
 
         node.attributes["tip"] = Array(node.children[0].attributes["tip"])
         node.attributes["ime"] = node.children[1].lexical_unit
@@ -886,11 +848,9 @@ def provjeri_init_deklarator(node: Node):
         if isinstance(node.children[0], Array):
             prim = node.children[0].primitive
             if isinstance(prim, Const):
-                pass
-                # TODO error
+                print_error(node)
         if isinstance(node.children[0], Const):
-            pass
-            # TODO error
+            print_error(node)
 
     elif children == ["<izravni_deklarator>", "OP_PRIDRUZI", "<inicijalizator>"]:
         node.children[0].attributes["ntip"] = node.attributes["ntip"]
@@ -901,17 +861,14 @@ def provjeri_init_deklarator(node: Node):
             T = deklarator_tip.primitive
             T = T if not isinstance(T, Const) else T.primitive
             if node.children[2].attributes["br-elem"] > node.children[0].attributes["br-elem"]:
-                pass
-                # TODO greška
+                print_error(node)
             for U in node.children[2].attributes["tipovi"]:
                 if not check_types(U, T):
-                    pass
-                    # TODO greška
+                    print_error(node)
         else:
             T = deklarator_tip if not isinstance(deklarator_tip, Const) else deklarator_tip.primitive
             if not check_types(node.children[2].attributes["tip"], T):
-                pass
-                # TODO greška
+                print_error(node)
 
 def provjeri_izravni_deklarator(node: Node):
 
@@ -1049,8 +1006,6 @@ if __name__ == "__main__":
         tablice znakova
 
         provjere nakon obilaska stabla
-
-        ispis grešaka
 
         detaljno pročitati upute još jednom
 
