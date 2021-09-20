@@ -997,15 +997,33 @@ if __name__ == "__main__":
     # čitanje generativnog stabla s ulaza
     read_generative_tree()
 
+    # početak semantičke analize
+    provjeri_prijevodna_jedinica(generative_tree_root)
+
+    # provjera postojanja funkcije main
+    if "main" in function_declarations:
+        if "main" in function_definitions:
+            main = function_definitions["main"]
+            if not isinstance(main.params, Void) or not isinstance(main.ret_val, Int):
+                print("main")
+                exit()
+        else:
+            print("main")
+            exit()
+    else:
+        print("main")
+        exit()
+
+    # provjera da su sve deklarirane funkcije i definirane
+    for func in function_declarations:
+        if func not in function_definitions:
+            print("funkcija")
+            exit()
 
 '''
     TODO:
 
-        deklaracije funkcija
-
-        tablice znakova
-
-        provjere nakon obilaska stabla
+        dovršiti labos
 
         detaljno pročitati upute još jednom
 
