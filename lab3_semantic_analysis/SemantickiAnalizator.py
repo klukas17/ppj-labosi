@@ -1,5 +1,11 @@
 from typing import Union
 
+# klasa za modeliranje tablice znakova
+class Symbol_Table():
+    def __init__(self):
+        self.table = {}
+        self.parent = None
+
 # apstraktna klasa za modeliranje čvora generativnog stabla
 class Abs_Node():
     def __init__(self):
@@ -12,6 +18,7 @@ class Node(Abs_Node):
         self.symbol = symbol
         self.children = []
         self.attributes = {}
+        self.symbol_table = None
     def __repr__(self) -> str:
         return self.symbol
 
@@ -149,6 +156,10 @@ def provjeri_primarni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+
     if children == ["IDN"]: 
         # TODO: provjera
         pass
@@ -200,6 +211,10 @@ def provjeri_postfiks_izraz(node: Node):
     
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<primarni_izraz>"]:
         provjeri_primarni_izraz(node.children[0])
 
@@ -269,6 +284,10 @@ def provjeri_lista_argumenata(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<izraz_pridruzivanja>"]:
         provjeri_izraz_pridruzivanja(node.children[0])
 
@@ -284,6 +303,10 @@ def provjeri_unarni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<postfiks_izraz>"]:
         provjeri_postfiks_izraz(node.children[0])
 
@@ -314,6 +337,10 @@ def provjeri_cast_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<unarni_izraz"]:
         provjeri_unarni_izraz(node.children[0])
 
@@ -333,6 +360,10 @@ def provjeri_ime_tipa(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["specifikator_tipa"]:
         provjeri_specifikator_tipa(node.children[0])
 
@@ -349,6 +380,10 @@ def provjeri_specifikator_tipa(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["KR_VOID"]:
         node.attributes["tip"] = Void()
 
@@ -362,6 +397,10 @@ def provjeri_multiplikativni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<cast_izraz>"]:
         provjeri_cast_izraz(node.children[0])
 
@@ -385,6 +424,10 @@ def provjeri_aditivni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<multiplikativni_izraz>"]:
         provjeri_multiplikativni_izraz(node.children[0])
 
@@ -407,6 +450,10 @@ def provjeri_odnosni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<aditivni_izraz>"]:
         provjeri_aditivni_izraz(node.children[0])
 
@@ -431,6 +478,10 @@ def provjeri_jednakosni_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<odnosni_izraz>"]:
         provjeri_odnosni_izraz(node.children[0])
 
@@ -453,6 +504,10 @@ def provjeri_bin_i_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<jednakosni_izraz>"]:
         provjeri_jednakosni_izraz(node.children[0])
 
@@ -474,6 +529,10 @@ def provjeri_bin_xili_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<bin_i_izraz>"]:
         provjeri_bin_i_izraz(node.children[0])
 
@@ -495,6 +554,10 @@ def provjeri_bin_ili_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<bin_xili_izraz>"]:
         provjeri_bin_xili_izraz(node.children[0])
 
@@ -516,6 +579,10 @@ def provjeri_log_i_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<bin_ili_izraz>"]:
         provjeri_bin_ili_izraz(node.children[0])
 
@@ -537,6 +604,10 @@ def provjeri_log_ili_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<log_i_izraz>"]:
         provjeri_log_i_izraz(node.children[0])
 
@@ -558,6 +629,10 @@ def provjeri_izraz_pridruzivanja(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<log_ili_izraz>"]:
         provjeri_log_ili_izraz(node.children[0])
 
@@ -579,6 +654,10 @@ def provjeri_izraz(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<izraz_pridruzivanja>"]:
         provjeri_izraz_pridruzivanja(node.children[0])
 
@@ -596,6 +675,10 @@ def provjeri_slozena_naredba(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["L_VIT_ZAGRADA", "<lista_naredbi>", "D_VIT_ZAGRADA"]:
         provjeri_lista_naredbi(node.children[1])
 
@@ -607,6 +690,10 @@ def provjeri_lista_naredbi(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<naredba>"]:
         provjeri_naredba(node.children[0])
 
@@ -618,6 +705,10 @@ def provjeri_naredba(node: Node):
     
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<slozena_naredba>"]:
         provjeri_slozena_naredba(node.children[0])
 
@@ -637,6 +728,10 @@ def provjeri_izraz_naredba(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["TOCKAZAREZ"]:
         node.attributes["tip"] = Int()
 
@@ -649,6 +744,10 @@ def provjeri_naredba_grananja(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["KR_IF", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
@@ -665,7 +764,11 @@ def provjeri_naredba_grananja(node: Node):
 def provjeri_naredba_petlje(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
-    
+
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+                
     if children == ["KR_WHILE", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz(node.children[2])
         if not check_types(node.children[2].attributes["tip"], Int()):
@@ -691,6 +794,10 @@ def provjeri_naredba_skoka(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["KR_CONTINUE", "TOCKAZAREZ"] or \
        children == ["KR_BREAK", "TOCKAZAREZ"]:
        pass
@@ -708,6 +815,14 @@ def provjeri_prijevodna_jedinica(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+
     if children == ["<vanjska_deklaracija>"]:
         provjeri_vanjska_deklaracija(node.children[0])
 
@@ -719,6 +834,10 @@ def provjeri_vanjska_deklaracija(node: Node):
     
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<definicija_funkcije>"]:
         provjeri_definicija_funkcije(node.children[0])
 
@@ -729,6 +848,10 @@ def provjeri_definicija_funkcije(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "KR_VOID", "D_ZAGRADA", "<slozena_naredba>"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance(node.children[0].attributes["tip"], Const()):
@@ -769,6 +892,10 @@ def provjeri_lista_parametara(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<deklaracija_parametra>"]:
         provjeri_deklaracija_parametra(node.children[0])
 
@@ -788,6 +915,10 @@ def provjeri_deklaracija_parametra(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<ime_tipa>", "IDN"]:
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
@@ -808,6 +939,10 @@ def provjeri_lista_deklaracija(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<deklaracija>"]:
         provjeri_deklaracija(node.children[0])
 
@@ -819,6 +954,10 @@ def provjeri_deklaracija(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<ime_tipa>", "<lista_init_deklaratora>", "TOCKAZAREZ"]:
         provjeri_ime_tipa(node.children[0])
         node.children[1].attributes["ntip"] = node.children[0].attributes["tip"]
@@ -828,6 +967,10 @@ def provjeri_lista_init_deklaratora(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<init_deklarator>"]:
         node.children[0].attributes["ntip"] = node.attributes["ntip"]
         provjeri_init_deklarator(node.children[0])
@@ -842,6 +985,10 @@ def provjeri_init_deklarator(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<izravni_deklarator>"]:
         node.children[0].attributes["ntip"] = node.attributes["ntip"]
         provjeri_izravni_deklarator(node.children[0])
@@ -874,6 +1021,10 @@ def provjeri_izravni_deklarator(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["IDN"]:
         pass
 
@@ -890,6 +1041,10 @@ def provjeri_inicijalizator(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<lista_pridruzivanja>"]:
         pass
 
@@ -900,6 +1055,10 @@ def provjeri_lista_izraza_pridruzivanja(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    for child in node.children:
+        if isinstance(child, Node):
+            child.symbol_table = node.symbol_table
+            
     if children == ["<izraz_pridruzivanja>"]:
         pass
 
@@ -996,6 +1155,9 @@ if __name__ == "__main__":
     
     # čitanje generativnog stabla s ulaza
     read_generative_tree()
+
+    # stvaranje tablice znakova u globalnom djelokrugu
+    generative_tree_root.symbol_table = Symbol_Table()
 
     # početak semantičke analize
     provjeri_prijevodna_jedinica(generative_tree_root)
