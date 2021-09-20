@@ -74,6 +74,12 @@ generative_tree_root = None
 # lista čvorova generativnog stabla čija djeca se trenutno grade
 active_nodes = []
 
+# riječnik u kojem se pamte deklaracije svih funkcija
+function_declarations = {}
+
+# riječnik u kojem se pamte definicije svih funkcija
+function_definitions = {}
+
 # funkcija koja sa standardnog ulaza čita generativno stablo
 def read_generative_tree() -> None:
 
@@ -755,9 +761,17 @@ def provjeri_definicija_funkcije(node: Node):
         if isinstance(node.children[0].attributes["tip"], Const()):
             pass
             # TODO greška
-        # TODO provjera
-        # TODO provjera
-        # TODO provjera
+        new_funct_name = node.children[1].lexical_unit
+        if new_funct_name in function_definitions:
+            pass
+            # TODO greška
+        if new_funct_name in function_declarations:
+            existing_function = function_declarations[new_funct_name]
+            if not isinstance(existing_function.params, Void) or \
+               type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
+                pass
+                # TODO greška
+        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(Void(), node.children[0].attributes["tip"])
         provjeri_slozena_naredba(node.children[5])
 
     elif children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA", "<slozena_naredba>"]:
@@ -765,68 +779,139 @@ def provjeri_definicija_funkcije(node: Node):
         if isinstance(node.children[0].attributes["tip"], Const()):
             pass
             # TODO greška
-        # TODO provjera
-        # TODO provjera
-        # TODO provjera
-        # TODO provjera
-        # TODO provjera
+        new_funct_name = node.children[1].lexical_unit
+        if new_funct_name in function_definitions:
+            pass
+            # TODO greška
+        provjeri_lista_parametara(node.children[3])
+        if new_funct_name in function_declarations:
+            existing_function = function_declarations[new_funct_name]
+            if type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
+                pass
+                # TODO greška
+            if len(existing_function.params) != len(node.children[3].attributes["tipovi"]):
+                pass
+                # TODO greška
+            else:
+                for i in range(len(existing_function.params)):
+                    if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
+                        pass
+                        # TODO greška
+        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(node.children[3].attributes["tipov"], node.children[0].attributes["tip"])
+        provjeri_slozena_naredba(node.children[5])
 
 def provjeri_lista_parametara(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<deklaracija_parametra>"]:
-        pass
+        provjeri_deklaracija_parametra(node.children[0])
+
+        node.children[0].attributes["tipovi"] = [node.children[0].attributes["tip"]]
+        node.children[0].attributes["imena"] = [node.children[0].attributes["ime"]]
 
     elif children == ["<lista_parametara", "ZAREZ", "<deklaracija_parametra>"]:
-        pass
+        provjeri_lista_parametara(node.children[0])
+        provjeri_deklaracija_parametra(node.children[2])
+        if node.children[2].attributes["ime"] in node.children[0].attributes["imena"]:
+            pass
+            # TODO greška
+
+        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
+        node.attributes["imena"] = node.children[0].attributes["imena"] + [node.children[2].attributes["ime"]]
 
 def provjeri_deklaracija_parametra(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<ime_tipa>", "IDN"]:
-        pass
+        provjeri_ime_tipa(node.children[0])
+        if isinstance (node.children[0].attributes["tip"], Void):
+            pass
+            # TODO greška
+
+        node.attributes["tip"] = node.children[0].attributes["tip"]
+        node.attributes["ime"] = node.children[1].lexical_unit
 
     elif children == ["<ime_tipa>", "IDN", "L_UGL_ZAGRADA", "D_UGL_ZAGRADA"]:
-        pass
+        provjeri_ime_tipa(node.children[0])
+        if isinstance (node.children[0].attributes["tip"], Void):
+            pass
+            # TODO greška
+
+        node.attributes["tip"] = Array(node.children[0].attributes["tip"])
+        node.attributes["ime"] = node.children[1].lexical_unit
 
 def provjeri_lista_deklaracija(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<deklaracija>"]:
-        pass
+        provjeri_deklaracija(node.children[0])
 
     elif children == ["<lista_deklaracija>", "<deklaracija>"]:
-        pass
+        provjeri_lista_deklaracija(node.children[0])
+        provjeri_deklaracija(node.children[1])
 
 def provjeri_deklaracija(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<ime_tipa>", "<lista_init_deklaratora>", "TOCKAZAREZ"]:
-        pass
+        provjeri_ime_tipa(node.children[0])
+        node.children[1].attributes["ntip"] = node.children[0].attributes["tip"]
+        provjeri_init_deklarator(node.children[1])
 
 def provjeri_lista_init_deklaratora(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<init_deklarator>"]:
-        pass
+        node.children[0].attributes["ntip"] = node.attributes["ntip"]
+        provjeri_init_deklarator(node.children[0])
 
     elif children == ["<lista_init_deklaratora>", "ZAREZ", "<init_deklarator>"]:
-        pass
+        node.children[0].attributes["ntip"] = node.attributes["ntip"]
+        provjeri_lista_init_deklaratora(node.children[0])
+        node.children[2].attributes["ntip"] = node.attributes["ntip"]
+        provjeri_init_deklarator(node.children[2])
 
 def provjeri_init_deklarator(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
     if children == ["<izravni_deklarator>"]:
-        pass
+        node.children[0].attributes["ntip"] = node.attributes["ntip"]
+        provjeri_izravni_deklarator(node.children[0])
+        if isinstance(node.children[0], Array):
+            prim = node.children[0].primitive
+            if isinstance(prim, Const):
+                pass
+                # TODO error
+        if isinstance(node.children[0], Const):
+            pass
+            # TODO error
 
     elif children == ["<izravni_deklarator>", "OP_PRIDRUZI", "<inicijalizator>"]:
-        pass
+        node.children[0].attributes["ntip"] = node.attributes["ntip"]
+        provjeri_izravni_deklarator(node.children[0])
+        provjeri_inicijalizator(node.children[2])
+        deklarator_tip = node.children[0].attributes["tip"]
+        if isinstance(deklarator_tip, Array):
+            T = deklarator_tip.primitive
+            T = T if not isinstance(T, Const) else T.primitive
+            if node.children[2].attributes["br-elem"] > node.children[0].attributes["br-elem"]:
+                pass
+                # TODO greška
+            for U in node.children[2].attributes["tipovi"]:
+                if not check_types(U, T):
+                    pass
+                    # TODO greška
+        else:
+            T = deklarator_tip if not isinstance(deklarator_tip, Const) else deklarator_tip.primitive
+            if not check_types(node.children[2].attributes["tip"], T):
+                pass
+                # TODO greška
 
 def provjeri_izravni_deklarator(node: Node):
 
@@ -953,4 +1038,21 @@ def check_cast_primitive(A, B) -> bool:
 if __name__ == "__main__":
     
     # čitanje generativnog stabla s ulaza
-    read_generative_tree()   
+    read_generative_tree()
+
+
+'''
+    TODO:
+
+        deklaracije funkcija
+
+        tablice znakova
+
+        provjere nakon obilaska stabla
+
+        ispis grešaka
+
+        detaljno pročitati upute još jednom
+
+        provjera čitavog labosa
+'''    
