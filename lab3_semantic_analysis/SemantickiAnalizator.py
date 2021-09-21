@@ -1,4 +1,5 @@
 from typing import Union
+import typing
 
 # klasa za modeliranje tablice znakova
 class Symbol_Table():
@@ -13,22 +14,24 @@ class Abs_Node():
 
 # klasa za modeliranje unutarnjeg čvora generativnog stabla
 class Node(Abs_Node):
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, parent: Abs_Node):
         Abs_Node.__init__(self)
         self.symbol = symbol
         self.children = []
         self.attributes = {}
+        self.parent = parent
         self.symbol_table = None
     def __repr__(self) -> str:
         return self.symbol
 
 # klasa za modeliranje lista stabla
 class Leaf(Abs_Node):
-    def __init__(self, symbol: str, line: int, lexical_unit: str):
+    def __init__(self, symbol: str, line: int, lexical_unit: str, parent: Abs_Node):
         Abs_Node.__init__(self)
         self.symbol = symbol
         self.line = line
         self.lexical_unit = lexical_unit
+        self.parent = parent
     def __repr__(self) -> str:
         return self.symbol
 
@@ -93,7 +96,7 @@ def read_generative_tree() -> None:
     global generative_tree_root
 
     # čitanje korijena generativnog stabla
-    generative_tree_root = Node(input())
+    generative_tree_root = Node(input(), None)
     active_nodes.append(generative_tree_root)
 
     # čitanje standardnog ulaza
@@ -123,7 +126,7 @@ def read_generative_tree() -> None:
                 
                 # unutarnji čvor
                 else:
-                    curr_node = Node(s)
+                    curr_node = Node(s, active_nodes[whitespace_count-1])
                     active_nodes[whitespace_count-1].children.append(curr_node)
 
                     if len(active_nodes) > whitespace_count:
@@ -133,7 +136,7 @@ def read_generative_tree() -> None:
 
             # uniformna jedinka, tj. list generativnog stabla
             else:
-                active_nodes[whitespace_count-1].children.append(Leaf(s[0], s[1], s[2]))
+                active_nodes[whitespace_count-1].children.append(Leaf(s[0], s[1], s[2], active_nodes[whitespace_count-1]))
             
     except EOFError:
         pass
@@ -161,14 +164,22 @@ def provjeri_primarni_izraz(node: Node):
             child.symbol_table = node.symbol_table
 
     if children == ["IDN"]: 
-        # TODO: provjera
-        pass
+        found = False
+        curr_scope = node.symbol_table
+        var = node.children[0].lexical_unit
+        while not found and curr_scope is not None:
+            if var in curr_scope:
+                found = True
+            else:
+                curr_scope = curr_scope.parent
+        if not found:
+            print_error(node)
 
         node.attributes["tip"] = node.children[0].atrributes["tip"]
         node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
 
     elif children == ["BROJ"]:
-        value = int(node.lexical_unit) # ! TESTIRATI
+        value = int(node.children[0].lexical_unit)
         if value < -2**31 or value > 2**31 - 1: 
             print_error(node)
 
@@ -176,7 +187,7 @@ def provjeri_primarni_izraz(node: Node):
         node.attributes["l-izraz"] = 0
 
     elif children == ["ZNAK"]:
-        value = node.lexical_unit # ! TESTIRATI
+        value = node.children[0].lexical_unit
         if len(value) > 1 and value[0] == "\\" and value[1] not in ["t", "n", "0", "'", "\"", "\\"]:
             print_error(node)
         elif len(value) == 1 and (ord(value) < 0 or ord(value) > 255):
@@ -186,7 +197,7 @@ def provjeri_primarni_izraz(node: Node):
         node.attributes["l-izraz"] = 0
 
     elif children == ["NIZ_ZNAKOVA"]:
-        value = node.lexical_unit # ! TESTIRATI
+        value = node.children[0].lexical_unit
         i = 0
         while i < len(value):
             if value[i] != "\\":
@@ -675,6 +686,10 @@ def provjeri_slozena_naredba(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
+    new_symbol_table = Symbol_Table()
+    new_symbol_table.parent = node.symbol_table
+    node.symbol_table = new_symbol_table
+
     for child in node.children:
         if isinstance(child, Node):
             child.symbol_table = node.symbol_table
@@ -800,16 +815,46 @@ def provjeri_naredba_skoka(node: Node):
             
     if children == ["KR_CONTINUE", "TOCKAZAREZ"] or \
        children == ["KR_BREAK", "TOCKAZAREZ"]:
-       pass
-       # TODO provjera
+        check = False
+        curr_node = node
+        while not check and curr_node is not None:
+            if isinstance(curr_node, Node) and curr_node.symbol == "<naredba_petlje>":
+                check = True
+            else:
+                curr_node = curr_node.parent
+        if not check:
+            print_error(node)
 
     elif children == ["KR_RETURN", "TOCKAZAREZ"]:
-        pass
-        # TODO provjera
+        check = False
+        curr_node = node
+        while not check and curr_node is not None:
+            if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije>":
+                n = curr_node.children[0]
+                if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
+                    n = n.children[0]
+                    if isinstance(n, Leaf) and "tip" in n.attributes and isinstance(n.attributes["tip"], Void):
+                        check = True
+            if not check:
+                curr_node = curr_node.parent
+        if not check:
+            print_error(node)
 
     elif children == ["KR_RETURN", "<izraz>", "TOCKAZAREZ"]:
-        pass
-        # TODO provjera
+        provjeri_izraz(node.children[1])
+        check = False
+        curr_node = node
+        while not check and curr_node is not None:
+            if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije":
+                n = curr_node
+                if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
+                    n = n.children[0]
+                    if isinstance(n, Leaf) and "tip" in n.attributes and check_types(n.attributes["tip"], node.children[1].attributes["tip"]):
+                        check = True
+            if not check:
+                curr_node = curr_node.parent
+        if not check:
+            print_error(node)
 
 def provjeri_prijevodna_jedinica(node: Node):
 
@@ -847,6 +892,10 @@ def provjeri_vanjska_deklaracija(node: Node):
 def provjeri_definicija_funkcije(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
+
+    new_symbol_table = Symbol_Table()
+    new_symbol_table.parent = node.symbol_table
+    node.symbol_table = new_symbol_table
 
     for child in node.children:
         if isinstance(child, Node):
@@ -1026,13 +1075,40 @@ def provjeri_izravni_deklarator(node: Node):
             child.symbol_table = node.symbol_table
             
     if children == ["IDN"]:
-        pass
+        if isinstance(node.attributes["ntip"], Void):
+            print_error(node)
+        if node.children[0].lexical_unit in node.symbol_table:
+            print_error(node)
+        node.symbol_table[node.children[0].lexical_unit] = node
+
+        node.attributes["tip"] = node.attributes["ntip"]
 
     elif children == ["IDN", "L_UGL_ZAGRADA", "BROJ", "D_UGL_ZAGRADA"]:
-        pass
+        if isinstance(node.attributes["ntip"], Void):
+            print_error(node)
+        if node.children[0].lexical_unit in node.symbol_table:
+            print_error(node)
+        br = int(node.children[2].lexical_unit)
+        if br <= 0 or br > 1024:
+            print_error(node)
+        node.symbol_table[node.children[0].lexical_unit] = node
+        
+        node.attributes["tip"] = Array(node.attributes["ntip"])
+        node.attributes["br-elem"] = br
 
     elif children == ["IDN", "L_ZAGRADA", "KR_VOID", "D_ZAGRADA"]:
-        pass
+        f_name = node.children[0].lexical_unit
+        if f_name in function_declarations:
+            f = function_declarations[f_name]
+            if isinstance(f, Function):
+                if not isinstance(f.params, Void):
+                    pass
+                else:
+                    print_error(node)
+            else:
+                print_error(node)
+
+        node.attributes["tip"] = Function(Void(), node.attributes["ntip"])
 
     elif children == ["IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA"]:
         pass
