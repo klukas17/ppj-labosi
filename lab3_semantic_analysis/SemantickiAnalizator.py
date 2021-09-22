@@ -193,8 +193,8 @@ def provjeri_primarni_izraz(node: Node):
         if not found:
             print_error(node)
 
-        node.attributes["tip"] = IDN.attributes["tip"]
-        node.attributes["l-izraz"] = IDN.attributes["l-izraz"] if "l-izraz" in IDN.attributes else 1
+        node.attributes["tip"] = IDN.attributes["tip"] if not isinstance(IDN, Function) and "tip" in IDN.attributes else None
+        node.attributes["l-izraz"] = IDN.attributes["l-izraz"] if not isinstance(IDN, Function) and "l-izraz" in IDN.attributes else None
 
     elif children == ["BROJ"]:
         value = int(node.children[0].lexical_unit)
@@ -233,8 +233,8 @@ def provjeri_primarni_izraz(node: Node):
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         provjeri_izraz(node.children[1])
 
-        node.attributes["tip"] = node.children[1].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[1].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[1].attributes["tip"] if "tip" in node.children[1].attributes else None
+        node.attributes["l-izraz"] = node.children[1].attributes["l-izraz"] if "l-izraz" in node.children[1].attributes else None
 
 def provjeri_postfiks_izraz(node: Node):
     
@@ -247,8 +247,8 @@ def provjeri_postfiks_izraz(node: Node):
     if children == ["<primarni_izraz>"]:
         provjeri_primarni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
         X = None
@@ -320,13 +320,13 @@ def provjeri_lista_argumenata(node: Node):
     if children == ["<izraz_pridruzivanja>"]:
         provjeri_izraz_pridruzivanja(node.children[0])
 
-        node.attributes["tipovi"] = [node.children[0].attributes["tip"]]
+        node.attributes["tipovi"] = [node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None]
 
     elif children == ["<lista_argumenata>", "ZAREZ", "<izraz_pridruzivanja>"]:
         provjeri_lista_argumenata(node.children[0])
         provjeri_izraz_pridruzivanja(node.children[2])
 
-        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
+        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"] if "tip" in node.children[2].attributes else None]
 
 def provjeri_unarni_izraz(node: Node):
 
@@ -339,8 +339,8 @@ def provjeri_unarni_izraz(node: Node):
     if children == ["<postfiks_izraz>"]:
         provjeri_postfiks_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["OP_INC", "<unarni_izraz>"] or \
          children == ["OP_DEC", "<unarni_izraz>"]:
@@ -374,8 +374,8 @@ def provjeri_cast_izraz(node: Node):
     if children == ["<unarni_izraz>"]:
         provjeri_unarni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"]  if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]  if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
         provjeri_ime_tipa(node.children[1])
@@ -383,7 +383,7 @@ def provjeri_cast_izraz(node: Node):
         if not check_cast(node.children[3].attributes["tip"], node.children[1].attributes["tip"]):
             print_error(node)
         
-        node.attributes["tip"] = node.children[1].attributes["tip"]
+        node.attributes["tip"] = node.children[1].attributes["tip"]  if "tip" in node.children[1].attributes else None
         node.attributes["l-izraz"] = 0
 
 def provjeri_ime_tipa(node: Node):
@@ -397,14 +397,14 @@ def provjeri_ime_tipa(node: Node):
     if children == ["<specifikator_tipa>"]:
         provjeri_specifikator_tipa(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
 
     elif children == ["KR_CONST", "<specifikator_tipa>"]:
         provjeri_specifikator_tipa(node.children[1])
         if isinstance(node.children[1].attributes["tip"], Void):
             print_error(node)
 
-        node.attributes["tip"] = Const(node.children[1].attributes["tip"])
+        node.attributes["tip"] = Const(node.children[1].attributes["tip"] if "tip" in node.children[1].attributes else None)
 
 def provjeri_specifikator_tipa(node: Node):
 
@@ -434,8 +434,8 @@ def provjeri_multiplikativni_izraz(node: Node):
     if children == ["<cast_izraz>"]:
         provjeri_cast_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<multiplikativni izraz>", "OP_PUTA", "<cast_izraz>"] or \
          children == ["<multiplikativni izraz>", "OP_DIJELI", "<cast_izraz>"] or \
@@ -461,8 +461,8 @@ def provjeri_aditivni_izraz(node: Node):
     if children == ["<multiplikativni_izraz>"]:
         provjeri_multiplikativni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"] or \
          children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
@@ -487,8 +487,8 @@ def provjeri_odnosni_izraz(node: Node):
     if children == ["<aditivni_izraz>"]:
         provjeri_aditivni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"] or \
          children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"] or \
@@ -515,8 +515,8 @@ def provjeri_jednakosni_izraz(node: Node):
     if children == ["<odnosni_izraz>"]:
         provjeri_odnosni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"] or \
          children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
@@ -541,8 +541,8 @@ def provjeri_bin_i_izraz(node: Node):
     if children == ["<jednakosni_izraz>"]:
         provjeri_jednakosni_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
         provjeri_bin_i_izraz(node.children[0])
@@ -566,8 +566,8 @@ def provjeri_bin_xili_izraz(node: Node):
     if children == ["<bin_i_izraz>"]:
         provjeri_bin_i_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
         provjeri_bin_xili_izraz(node.children[0])
@@ -591,8 +591,8 @@ def provjeri_bin_ili_izraz(node: Node):
     if children == ["<bin_xili_izraz>"]:
         provjeri_bin_xili_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
         provjeri_bin_ili_izraz(node.children[0])
@@ -616,8 +616,8 @@ def provjeri_log_i_izraz(node: Node):
     if children == ["<bin_ili_izraz>"]:
         provjeri_bin_ili_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
         provjeri_log_i_izraz(node.children[0])
@@ -641,8 +641,8 @@ def provjeri_log_ili_izraz(node: Node):
     if children == ["<log_i_izraz>"]:
         provjeri_log_i_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
         provjeri_log_ili_izraz(node.children[0])
@@ -666,8 +666,8 @@ def provjeri_izraz_pridruzivanja(node: Node):
     if children == ["<log_ili_izraz>"]:
         provjeri_log_ili_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
         provjeri_postfiks_izraz(node.children[0])
@@ -677,7 +677,7 @@ def provjeri_izraz_pridruzivanja(node: Node):
         if not check_types(node.children[2].attributes["tip"], node.children[0].attributes["tip"]):
             print_error(node)
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
         node.attributes["l-izraz"] = 0
 
 def provjeri_izraz(node: Node):
@@ -691,14 +691,14 @@ def provjeri_izraz(node: Node):
     if children == ["<izraz_pridruzivanja>"]:
         provjeri_izraz_pridruzivanja(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
-        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
+        node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
         provjeri_izraz(node.children[0])
         provjeri_izraz_pridruzivanja(node.children[2])
 
-        node.attributes["tip"] = node.children[2].attributes["tip"]
+        node.attributes["tip"] = node.children[2].attributes["tip"] if "tip" in node.children[2].attributes else None
         node.attributes["l-izraz"] = 0
 
 def provjeri_slozena_naredba(node: Node):
@@ -772,7 +772,7 @@ def provjeri_izraz_naredba(node: Node):
     elif children == ["<izraz>", "TOCKAZAREZ"]:
         provjeri_izraz(node.children[0])
 
-        node.attributes["tip"] = node.children[0].attributes["tip"]
+        node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
 
 def provjeri_naredba_grananja(node: Node):
 
@@ -921,12 +921,13 @@ def provjeri_definicija_funkcije(node: Node):
         new_funct_name = node.children[1].lexical_unit
         if new_funct_name in function_definitions:
             print_error(node)
-        if new_funct_name in function_declarations:
-            existing_function = function_declarations[new_funct_name]
+        if new_funct_name in node.symbol_table.table:
+            existing_function = node.symbol_table[new_funct_name]
             if not isinstance(existing_function.params, Void) or \
                type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
-        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
+        function_declarations[new_funct_name] = True
+        function_definitions[new_funct_name] = node.symbol_table.table[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
     elif children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA", "<slozena_naredba>"]:
@@ -937,8 +938,8 @@ def provjeri_definicija_funkcije(node: Node):
         if new_funct_name in function_definitions:
             print_error(node)
         provjeri_lista_parametara(node.children[3])
-        if new_funct_name in function_declarations:
-            existing_function = function_declarations[new_funct_name]
+        if new_funct_name in node.symbol_table.table:
+            existing_function = node.symbol_table.table[new_funct_name]
             if type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
             if len(existing_function.params) != len(node.children[3].attributes["tipovi"]):
@@ -947,7 +948,8 @@ def provjeri_definicija_funkcije(node: Node):
                 for i in range(len(existing_function.params)):
                     if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
                         print_error(node)
-        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(node.children[3].attributes["tipov"], node.children[0].attributes["tip"], node)
+        function_declarations[new_funct_name] = True
+        function_definitions[new_funct_name] = node.symbol_table.table[new_funct_name] = Function(node.children[3].attributes["tipovi"], node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
 def provjeri_lista_parametara(node: Node):
@@ -970,8 +972,8 @@ def provjeri_lista_parametara(node: Node):
         if node.children[2].attributes["ime"] in node.children[0].attributes["imena"]:
             print_error(node)
 
-        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
-        node.attributes["imena"] = node.children[0].attributes["imena"] + [node.children[2].attributes["ime"]]
+        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"] if "tip" in node.children[2].attributes else None]
+        node.attributes["imena"] = node.children[0].attributes["imena"] + [node.children[2].attributes["ime"] if "ime" in node.children[2].attributes else None]
 
 def provjeri_deklaracija_parametra(node: Node):
 
@@ -994,7 +996,7 @@ def provjeri_deklaracija_parametra(node: Node):
         if isinstance (node.children[0].attributes["tip"], Void):
             print_error(node)
 
-        node.attributes["tip"] = Array(node.children[0].attributes["tip"])
+        node.attributes["tip"] = Array(node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None)
         node.attributes["ime"] = node.children[1].lexical_unit
 
 def provjeri_lista_deklaracija(node: Node):
@@ -1022,7 +1024,7 @@ def provjeri_deklaracija(node: Node):
             
     if children == ["<ime_tipa>", "<lista_init_deklaratora>", "TOCKAZAREZ"]:
         provjeri_ime_tipa(node.children[0])
-        node.children[1].attributes["ntip"] = node.children[0].attributes["tip"]
+        node.children[1].attributes["ntip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
         provjeri_lista_init_deklaratora(node.children[1])
 
 def provjeri_lista_init_deklaratora(node: Node):
@@ -1111,8 +1113,8 @@ def provjeri_izravni_deklarator(node: Node):
 
     elif children == ["IDN", "L_ZAGRADA", "KR_VOID", "D_ZAGRADA"]:
         f_name = node.children[0].lexical_unit
-        if f_name in function_declarations:
-            f = function_declarations[f_name]
+        if f_name in node.symbol_table.table:
+            f = node.symbol_table.table[f_name]
             if isinstance(f, Function):
                 if isinstance(f.params, Void):
                     if type(f.ret_val) != type(node.attributes["ntip"]):
@@ -1121,15 +1123,16 @@ def provjeri_izravni_deklarator(node: Node):
                     print_error(node)
             else:
                 print_error(node)
-        function_declarations[f_name] = Function(Void(), node.attributes["ntip"], node)
+        function_declarations[f_name] = True
+        node.symbol_table.table[f_name] = Function(Void(), node.attributes["ntip"], node)
 
         node.attributes["tip"] = Function(Void(), node.attributes["ntip"], node)
 
     elif children == ["IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA"]:
         provjeri_lista_parametara(node.children[2])
         f_name = node.children[0].lexical_unit
-        if f_name in function_declarations:
-            f = function_declarations[f_name]
+        if f_name in node.symbol_table.table:
+            f = node.symbol_table.table[f_name]
             if isinstance(f, Function):
                 if node.children[2].attributes["tipovi"] == f.params:
                     if type(node.attributes["ntip"]) != type(f.ret_val):
@@ -1138,6 +1141,8 @@ def provjeri_izravni_deklarator(node: Node):
                     print_error(node)
             else:
                 print_error(node)
+        function_declarations[f_name] = True
+        node.symbol_table.table[f_name] = Function(node.children[2].attributes["tipovi"], node.attributes["ntip"], node)
 
         node.attributes["tip"] = Function(node.children[2].attributes["tipovi"], node.attributes["ntip"], node)
 
@@ -1177,8 +1182,8 @@ def provjeri_inicijalizator(node: Node):
     elif children == ["L_VIT_ZAGRADA", "<lista_izraza_pridruzivanja>", "D_VIT_ZAGRADA"]:
         provjeri_lista_izraza_pridruzivanja(node.children[1])
 
-        node.attributes["br-elem"] = node.children[1].attribues["br-elem"]
-        node.attributes["tipovi"] = node.children[1].attributes["tipovi"]
+        node.attributes["br-elem"] = node.children[1].attribues["br-elem"] if "br-elem" in node.children[1].attributes else None
+        node.attributes["tipovi"] = node.children[1].attributes["tipovi"] if "tipovi" in node.children[1].attributes else None
 
 def provjeri_lista_izraza_pridruzivanja(node: Node):
 
@@ -1198,7 +1203,7 @@ def provjeri_lista_izraza_pridruzivanja(node: Node):
         provjeri_lista_izraza_pridruzivanja(node.children[0])
         provjeri_izraz_pridruzivanja(node.children[2])
 
-        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
+        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"] if "tip" in node.children[2].attributes else None]
         node.attributes["br-elem"] = node.children[0].attributes["br-elem"] + 1
 
 # funkcija provjerava podudarnost tipova
