@@ -1,5 +1,4 @@
 from typing import Union
-import typing
 
 # klasa za modeliranje tablice znakova
 class Symbol_Table():
@@ -74,15 +73,13 @@ class Void():
 
 # klasa za modeliranje funkcije
 class Function():
-    def __init__(self, params, ret_val):
+    def __init__(self, params, ret_val, node):
         self.params = params
         self.ret_val = ret_val
+        self.node = node
 
 # varijabla za spremanje korijena generativnog stabla
 generative_tree_root = None
-
-# lista čvorova generativnog stabla čija djeca se trenutno grade
-active_nodes = []
 
 # riječnik u kojem se pamte deklaracije svih funkcija
 function_declarations = {}
@@ -94,6 +91,9 @@ function_definitions = {}
 def read_generative_tree() -> None:
 
     global generative_tree_root
+    
+    # lista čvorova generativnog stabla čija djeca se trenutno grade
+    active_nodes = []
 
     # čitanje korijena generativnog stabla
     generative_tree_root = Node(input(), None)
@@ -130,7 +130,8 @@ def read_generative_tree() -> None:
                     active_nodes[whitespace_count-1].children.append(curr_node)
 
                     if len(active_nodes) > whitespace_count:
-                        active_nodes[whitespace_count] = curr_node
+                        active_nodes = active_nodes[:whitespace_count]
+                        active_nodes.append(curr_node)
                     else:
                         active_nodes.append(curr_node)
 
@@ -251,7 +252,7 @@ def provjeri_postfiks_izraz(node: Node):
         provjeri_postfiks_izraz(node.children[0])
         if isinstance(node.children[0].attributes["tip"], Function):
             funct = node.children[0].attributes["tip"]
-            if isinstance(funct.params, Void): # and not isinstance(funct.ret_val, Void)
+            if isinstance(funct.params, Void):
                 pov = funct.ret_val
             else:
                 print_error(node)
@@ -327,7 +328,8 @@ def provjeri_unarni_izraz(node: Node):
     elif children == ["OP_INC", "<unarni_izraz>"] or \
          children == ["OP_DEC", "<unarni_izraz>"]:
         provjeri_unarni_izraz(node.children[1])
-        if node.children[1].attributes["l-izraz"] != 1 or not check_types(node.children[1].attributes["tip"], Int()):
+        if node.children[1].attributes["l-izraz"] != 1 or \
+           not check_types(node.children[1].attributes["tip"], Int()):
             print_error(node)
 
         node.attributes["tip"] = Int()
@@ -797,7 +799,7 @@ def provjeri_naredba_petlje(node: Node):
             print_error(node)
         provjeri_naredba(node.children[5])
 
-    elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "izraz", "D_ZAGRADA", "<naredba>"]:
+    elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz_naredba(node.children[2])
         provjeri_izraz_naredba[node.children[3]]
         if not check_types(node.children[3].attributes["tip"], Int()):
@@ -832,8 +834,7 @@ def provjeri_naredba_skoka(node: Node):
             if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije>":
                 n = curr_node.children[0]
                 if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
-                    n = n.children[0]
-                    if isinstance(n, Leaf) and "tip" in n.attributes and isinstance(n.attributes["tip"], Void):
+                    if "tip" in n.attributes and isinstance(n.attributes["tip"], Void):
                         check = True
             if not check:
                 curr_node = curr_node.parent
@@ -846,10 +847,9 @@ def provjeri_naredba_skoka(node: Node):
         curr_node = node
         while not check and curr_node is not None:
             if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije":
-                n = curr_node
+                n = curr_node.children[0]
                 if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
-                    n = n.children[0]
-                    if isinstance(n, Leaf) and "tip" in n.attributes and check_types(n.attributes["tip"], node.children[1].attributes["tip"]):
+                    if "tip" in n.attributes and check_types(node.children[1].attributes["tip"], n.attributes["tip"]):
                         check = True
             if not check:
                 curr_node = curr_node.parent
@@ -913,7 +913,7 @@ def provjeri_definicija_funkcije(node: Node):
             if not isinstance(existing_function.params, Void) or \
                type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
-        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(Void(), node.children[0].attributes["tip"])
+        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
     elif children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA", "<slozena_naredba>"]:
@@ -934,7 +934,7 @@ def provjeri_definicija_funkcije(node: Node):
                 for i in range(len(existing_function.params)):
                     if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
                         print_error(node)
-        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(node.children[3].attributes["tipov"], node.children[0].attributes["tip"])
+        function_declarations[new_funct_name] = function_definitions[new_funct_name] = Function(node.children[3].attributes["tipov"], node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
 def provjeri_lista_parametara(node: Node):
@@ -1010,7 +1010,7 @@ def provjeri_deklaracija(node: Node):
     if children == ["<ime_tipa>", "<lista_init_deklaratora>", "TOCKAZAREZ"]:
         provjeri_ime_tipa(node.children[0])
         node.children[1].attributes["ntip"] = node.children[0].attributes["tip"]
-        provjeri_init_deklarator(node.children[1])
+        provjeri_lista_init_deklaratora(node.children[1])
 
 def provjeri_lista_init_deklaratora(node: Node):
 
@@ -1101,17 +1101,31 @@ def provjeri_izravni_deklarator(node: Node):
         if f_name in function_declarations:
             f = function_declarations[f_name]
             if isinstance(f, Function):
-                if not isinstance(f.params, Void):
-                    pass
+                if isinstance(f.params, Void):
+                    if type(f.ret_val) != type(node.attributes["ntip"]):
+                        print_error(node)
                 else:
                     print_error(node)
             else:
                 print_error(node)
 
-        node.attributes["tip"] = Function(Void(), node.attributes["ntip"])
+        node.attributes["tip"] = Function(Void(), node.attributes["ntip"], node)
 
     elif children == ["IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA"]:
-        pass
+        provjeri_lista_parametara(node.children[2])
+        f_name = node.children[0].lexical_unit
+        if f_name in function_declarations:
+            f = function_declarations[f_name]
+            if isinstance(f, Function):
+                if node.children[2].attributes["tipovi"] == f.params:
+                    if type(node.attributes["ntip"]) != type(f.ret_val):
+                        print_error(node)
+                else:
+                    print_error(node)
+            else:
+                print_error(node)
+
+        node.attributes["tip"] = Function(node.children[2].attributes["tipovi"], node.attributes["ntip"], node)
 
 def provjeri_inicijalizator(node: Node):
 
@@ -1121,8 +1135,28 @@ def provjeri_inicijalizator(node: Node):
         if isinstance(child, Node):
             child.symbol_table = node.symbol_table
             
-    if children == ["<lista_pridruzivanja>"]:
-        pass
+    if children == ["<izraz_pridruzivanja>"]:
+        provjeri_izraz_pridruzivanja(node.children[0])
+
+        curr = node.children[0]
+        flag = True
+        while isinstance(curr, Node):
+            if len(curr.children) > 1:
+                flag = False
+                break
+            else:
+                if isinstance(curr.children[0], Node):
+                    curr = curr.children[0]
+        if flag:
+            if curr.children[0].symbol == "NIZ_ZNAKOVA":
+                node.attributes["br-elem"] = curr.attributes["br-elem"] + 1
+                node.attributes["tipovi"] = []
+                for _ in range(len(node.attributes["br-elem"] + 1)):
+                    node.attributes["tipovi"].append(Char())
+            else:
+                node.attributes["tip"] = node.children[0].attributes["tip"]
+        else:
+            node.attributes["tip"] = node.children[0].attributes["tip"]
 
     elif children == ["L_VIT_ZAGRADA", "<lista_izraza_pridruzivanja>", "D_VIT_ZAGRADA"]:
         pass
@@ -1136,10 +1170,17 @@ def provjeri_lista_izraza_pridruzivanja(node: Node):
             child.symbol_table = node.symbol_table
             
     if children == ["<izraz_pridruzivanja>"]:
-        pass
+        provjeri_izraz_pridruzivanja(node.children[0])
+
+        node.attributes["tipovi"] = [node.children[0].attributes["tip"]]
+        node.attributes["br-elem"] = 1
 
     elif children == ["<lista_izraza_pridruzivanja>", "ZAREZ", "<izraz_pridruzivanja>"]:
-        pass
+        provjeri_lista_izraza_pridruzivanja(node.children[0])
+        provjeri_izraz_pridruzivanja(node.children[2])
+
+        node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"]]
+        node.attributes["br-elem"] = node.children[0].attributes["br-elem"] + 1
 
 # funkcija provjerava podudarnost tipova
 def check_types(A, B) -> bool:
@@ -1197,7 +1238,21 @@ def check_types_primitive(A, B) -> bool:
 
 # funkcija provjerava mogućnost eksplicitnog casta
 def check_cast(A, B) -> bool:
-    return check_cast_const(A, B)
+    return check_cast_array(A, B)
+
+# funkcija koja provjerava eksplicitni cast polja
+def check_cast_array(A, B) -> bool:
+
+    if isinstance(A, Array) and isinstance(B, Array):
+        A = A.primitive
+        B = B.primitive
+        return check_cast_const(A, B)
+
+    elif not isinstance(A, Array) and not isinstance(B, Array):
+        return check_cast_const(A, B)
+
+    else:
+        return False
 
 # funkcija provjerava eksplicitni cast konstanti
 def check_cast_const(A, B) -> bool:
@@ -1242,7 +1297,8 @@ if __name__ == "__main__":
     if "main" in function_declarations:
         if "main" in function_definitions:
             main = function_definitions["main"]
-            if not isinstance(main.params, Void) or not isinstance(main.ret_val, Int):
+            if not isinstance(main.params, Void) or \
+               not (isinstance(main.ret_val, list) and len(main.ret_val) == 1 and isinstance(main.ret_val[0], Int)):
                 print("main")
                 exit()
         else:
@@ -1257,13 +1313,3 @@ if __name__ == "__main__":
         if func not in function_definitions:
             print("funkcija")
             exit()
-
-'''
-    TODO:
-
-        dovršiti labos
-
-        detaljno pročitati upute još jednom
-
-        provjera čitavog labosa
-'''    
