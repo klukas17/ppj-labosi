@@ -193,8 +193,12 @@ def provjeri_primarni_izraz(node: Node):
         if not found:
             print_error(node)
 
-        node.attributes["tip"] = IDN.attributes["tip"] if not isinstance(IDN, Function) and "tip" in IDN.attributes else None
-        node.attributes["l-izraz"] = IDN.attributes["l-izraz"] if not isinstance(IDN, Function) and "l-izraz" in IDN.attributes else None
+        if isinstance(IDN, Function):
+            node.attributes["tip"] = IDN
+            node.attributes["l-izraz"] = 0
+        else:
+            node.attributes["tip"] = IDN.attributes["tip"] if "tip" in IDN.attributes else None
+            node.attributes["l-izraz"] = IDN.attributes["l-izraz"] if "l-izraz" in IDN.attributes else None
 
     elif children == ["BROJ"]:
         value = int(node.children[0].lexical_unit)
@@ -850,9 +854,11 @@ def provjeri_naredba_skoka(node: Node):
         while not check and curr_node is not None:
             if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije>":
                 n = curr_node.children[0]
-                if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
-                    if "tip" in n.attributes and isinstance(n.attributes["tip"], Void):
-                        check = True
+                if isinstance(n, Node) and n.symbol == "<ime_tipa>":
+                    n = n.children[0]
+                    if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
+                        if "tip" in n.attributes and isinstance(n.attributes["tip"], Void):
+                            check = True
             if not check:
                 curr_node = curr_node.parent
         if not check:
@@ -863,11 +869,13 @@ def provjeri_naredba_skoka(node: Node):
         check = False
         curr_node = node
         while not check and curr_node is not None:
-            if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije":
+            if isinstance(curr_node, Node) and curr_node.symbol == "<definicija_funkcije>":
                 n = curr_node.children[0]
-                if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
-                    if "tip" in n.attributes and check_types(node.children[1].attributes["tip"], n.attributes["tip"]):
-                        check = True
+                if isinstance(n, Node) and n.symbol == "<ime_tipa>":
+                    n = n.children[0]
+                    if isinstance(n, Node) and n.symbol == "<specifikator_tipa>":
+                        if "tip" in n.attributes and check_types(node.children[1].attributes["tip"], n.attributes["tip"]):
+                            check = True
             if not check:
                 curr_node = curr_node.parent
         if not check:
@@ -884,7 +892,7 @@ def provjeri_prijevodna_jedinica(node: Node):
     if children == ["<vanjska_deklaracija>"]:
         provjeri_vanjska_deklaracija(node.children[0])
 
-    elif children == ["<prijevodna jedinica>", "<vanjska_deklaracija>"]:
+    elif children == ["<prijevodna_jedinica>", "<vanjska_deklaracija>"]:
         provjeri_prijevodna_jedinica(node.children[0])
         provjeri_vanjska_deklaracija(node.children[1])
 
@@ -927,7 +935,7 @@ def provjeri_definicija_funkcije(node: Node):
                type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
         function_declarations[new_funct_name] = True
-        function_definitions[new_funct_name] = node.symbol_table.table[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
+        function_definitions[new_funct_name] = node.parent.symbol_table.table[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
     elif children == ["<ime_tipa>", "IDN", "L_ZAGRADA", "<lista_parametara>", "D_ZAGRADA", "<slozena_naredba>"]:
@@ -949,7 +957,7 @@ def provjeri_definicija_funkcije(node: Node):
                     if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
                         print_error(node)
         function_declarations[new_funct_name] = True
-        function_definitions[new_funct_name] = node.symbol_table.table[new_funct_name] = Function(node.children[3].attributes["tipovi"], node.children[0].attributes["tip"], node)
+        function_definitions[new_funct_name] = node.parent.symbol_table.table[new_funct_name] = Function(node.children[3].attributes["tipovi"], node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
 def provjeri_lista_parametara(node: Node):
@@ -963,8 +971,8 @@ def provjeri_lista_parametara(node: Node):
     if children == ["<deklaracija_parametra>"]:
         provjeri_deklaracija_parametra(node.children[0])
 
-        node.children[0].attributes["tipovi"] = [node.children[0].attributes["tip"]]
-        node.children[0].attributes["imena"] = [node.children[0].attributes["ime"]]
+        node.attributes["tipovi"] = [node.children[0].attributes["tip"]]
+        node.attributes["imena"] = [node.children[0].attributes["ime"]]
 
     elif children == ["<lista_parametara>", "ZAREZ", "<deklaracija_parametra>"]:
         provjeri_lista_parametara(node.children[0])
@@ -987,6 +995,7 @@ def provjeri_deklaracija_parametra(node: Node):
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
             print_error(node)
+        node.symbol_table.parent.table[node.children[1].lexical_unit] = node
 
         node.attributes["tip"] = node.children[0].attributes["tip"]
         node.attributes["ime"] = node.children[1].lexical_unit
@@ -1097,6 +1106,7 @@ def provjeri_izravni_deklarator(node: Node):
         node.symbol_table.table[node.children[0].lexical_unit] = node
 
         node.attributes["tip"] = node.attributes["ntip"]
+        node.attributes["l-izraz"] = 1
 
     elif children == ["IDN", "L_UGL_ZAGRADA", "BROJ", "D_UGL_ZAGRADA"]:
         if isinstance(node.attributes["ntip"], Void):
@@ -1321,8 +1331,7 @@ if __name__ == "__main__":
     if "main" in function_declarations:
         if "main" in function_definitions:
             main = function_definitions["main"]
-            if not isinstance(main.params, Void) or \
-               not (isinstance(main.ret_val, list) and len(main.ret_val) == 1 and isinstance(main.ret_val[0], Int)):
+            if not isinstance(main.params, Void) or not isinstance(main.ret_val, Int):
                 print("main")
                 exit()
         else:
