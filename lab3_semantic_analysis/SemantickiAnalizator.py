@@ -709,9 +709,10 @@ def provjeri_slozena_naredba(node: Node):
 
     children = list(map(lambda n: n.symbol, node.children))
 
-    new_symbol_table = Symbol_Table()
-    new_symbol_table.parent = node.symbol_table
-    node.symbol_table = new_symbol_table
+    if not (isinstance(node.parent, Node) and node.parent.symbol == "<definicija_funkcije>"):
+        new_symbol_table = Symbol_Table()
+        new_symbol_table.parent = node.symbol_table
+        node.symbol_table = new_symbol_table
 
     scopes.append(node.symbol_table)
 
@@ -997,7 +998,11 @@ def provjeri_deklaracija_parametra(node: Node):
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
             print_error(node)
-        node.symbol_table.parent.table[node.children[1].lexical_unit] = node
+        curr_node = node
+        while curr_node.symbol not in ["<slozena_naredba>", "<vanjska_deklaracija>"]:
+            curr_node = curr_node.parent
+        if curr_node.symbol != "<slozena_naredba>":
+            node.symbol_table.table[node.children[1].lexical_unit] = node
 
         node.attributes["tip"] = node.children[0].attributes["tip"]
         node.attributes["ime"] = node.children[1].lexical_unit
@@ -1006,6 +1011,11 @@ def provjeri_deklaracija_parametra(node: Node):
         provjeri_ime_tipa(node.children[0])
         if isinstance (node.children[0].attributes["tip"], Void):
             print_error(node)
+        curr_node = node
+        while curr_node.symbol not in ["<slozena_naredba>", "<vanjska_deklaracija>"]:
+            curr_node = curr_node.parent
+        if curr_node.symbol != "<slozena_naredba>":
+            node.symbol_table.table[node.children[1].lexical_unit] = node
 
         node.attributes["tip"] = Array(node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None)
         node.attributes["ime"] = node.children[1].lexical_unit
@@ -1067,11 +1077,11 @@ def provjeri_init_deklarator(node: Node):
     if children == ["<izravni_deklarator>"]:
         node.children[0].attributes["ntip"] = node.attributes["ntip"]
         provjeri_izravni_deklarator(node.children[0])
-        if isinstance(node.children[0], Array):
-            prim = node.children[0].primitive
+        if isinstance(node.children[0].attributes["tip"], Array):
+            prim = node.children[0].attributes["tip"].primitive
             if isinstance(prim, Const):
                 print_error(node)
-        if isinstance(node.children[0], Const):
+        if isinstance(node.children[0].attributes["tip"], Const):
             print_error(node)
 
     elif children == ["<izravni_deklarator>", "OP_PRIDRUZI", "<inicijalizator>"]:
@@ -1180,7 +1190,7 @@ def provjeri_inicijalizator(node: Node):
                     break
         if flag:
             if curr.children[0].symbol == "NIZ_ZNAKOVA":
-                node.attributes["br-elem"] = count_chars(curr.children[0].lexical_unit) + 1
+                node.attributes["br-elem"] = count_chars(curr.children[0].lexical_unit) + 1 - 2
                 node.attributes["tipovi"] = []
                 for _ in range(node.attributes["br-elem"] + 1):
                     node.attributes["tipovi"].append(Char())
@@ -1192,7 +1202,7 @@ def provjeri_inicijalizator(node: Node):
     elif children == ["L_VIT_ZAGRADA", "<lista_izraza_pridruzivanja>", "D_VIT_ZAGRADA"]:
         provjeri_lista_izraza_pridruzivanja(node.children[1])
 
-        node.attributes["br-elem"] = node.children[1].attribues["br-elem"] if "br-elem" in node.children[1].attributes else None
+        node.attributes["br-elem"] = node.children[1].attributes["br-elem"] if "br-elem" in node.children[1].attributes else None
         node.attributes["tipovi"] = node.children[1].attributes["tipovi"] if "tipovi" in node.children[1].attributes else None
 
 def provjeri_lista_izraza_pridruzivanja(node: Node):
