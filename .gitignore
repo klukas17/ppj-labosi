@@ -40,4 +40,8 @@ lab4_code_generation/program.c
 lab4_code_generation/rules.txt
 lab4_code_generation/ppjC.txt
 lab4_code_generation/autograder.py
-lab4_code_generation/SemantickiAnalizator.py
+lab4_code_generation/friscasm.js
+lab4_code_generation/friscjs.js
+lab4_code_generation/main.js
+lab4_code_generation/a.frisc
+lab4_code_generation/__pycache__
