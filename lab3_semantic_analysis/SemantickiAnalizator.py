@@ -81,11 +81,11 @@ class Function():
 # varijabla za spremanje korijena generativnog stabla
 generative_tree_root = None
 
-# riječnik u kojem se pamte deklaracije svih funkcija
-function_declarations = {}
-
 # riječnik u kojem se pamte definicije svih funkcija
 function_definitions = {}
+
+# lista svih djelokruga
+scopes = []
 
 # funkcija koja sa standardnog ulaza čita generativno stablo
 def read_generative_tree() -> None:
@@ -713,6 +713,8 @@ def provjeri_slozena_naredba(node: Node):
     new_symbol_table.parent = node.symbol_table
     node.symbol_table = new_symbol_table
 
+    scopes.append(node.symbol_table)
+
     for child in node.children:
         if isinstance(child, Node):
             child.symbol_table = node.symbol_table
@@ -918,6 +920,8 @@ def provjeri_definicija_funkcije(node: Node):
     new_symbol_table.parent = node.symbol_table
     node.symbol_table = new_symbol_table
 
+    scopes.append(node.symbol_table)
+
     for child in node.children:
         if isinstance(child, Node):
             child.symbol_table = node.symbol_table
@@ -934,7 +938,6 @@ def provjeri_definicija_funkcije(node: Node):
             if not isinstance(existing_function.params, Void) or \
                type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
-        function_declarations[new_funct_name] = True
         function_definitions[new_funct_name] = node.parent.symbol_table.table[new_funct_name] = Function(Void(), node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
@@ -956,7 +959,6 @@ def provjeri_definicija_funkcije(node: Node):
                 for i in range(len(existing_function.params)):
                     if type(existing_function.params[i]) != type(node.children[3].attributes["tipovi"][i]):
                         print_error(node)
-        function_declarations[new_funct_name] = True
         function_definitions[new_funct_name] = node.parent.symbol_table.table[new_funct_name] = Function(node.children[3].attributes["tipovi"], node.children[0].attributes["tip"], node)
         provjeri_slozena_naredba(node.children[5])
 
@@ -1133,7 +1135,6 @@ def provjeri_izravni_deklarator(node: Node):
                     print_error(node)
             else:
                 print_error(node)
-        function_declarations[f_name] = True
         node.symbol_table.table[f_name] = Function(Void(), node.attributes["ntip"], node)
 
         node.attributes["tip"] = Function(Void(), node.attributes["ntip"], node)
@@ -1151,7 +1152,6 @@ def provjeri_izravni_deklarator(node: Node):
                     print_error(node)
             else:
                 print_error(node)
-        function_declarations[f_name] = True
         node.symbol_table.table[f_name] = Function(node.children[2].attributes["tipovi"], node.attributes["ntip"], node)
 
         node.attributes["tip"] = Function(node.children[2].attributes["tipovi"], node.attributes["ntip"], node)
@@ -1323,18 +1323,15 @@ if __name__ == "__main__":
 
     # stvaranje tablice znakova u globalnom djelokrugu
     generative_tree_root.symbol_table = Symbol_Table()
+    scopes.append(generative_tree_root.symbol_table)
 
     # početak semantičke analize
     provjeri_prijevodna_jedinica(generative_tree_root)
 
     # provjera postojanja funkcije main
-    if "main" in function_declarations:
-        if "main" in function_definitions:
-            main = function_definitions["main"]
-            if not isinstance(main.params, Void) or not isinstance(main.ret_val, Int):
-                print("main")
-                exit()
-        else:
+    if "main" in function_definitions:
+        main = function_definitions["main"]
+        if not isinstance(main.params, Void) or not isinstance(main.ret_val, Int):
             print("main")
             exit()
     else:
@@ -1342,7 +1339,27 @@ if __name__ == "__main__":
         exit()
 
     # provjera da su sve deklarirane funkcije i definirane
-    for func in function_declarations:
-        if func not in function_definitions:
-            print("funkcija")
-            exit()
+    for scope in scopes:
+        for var in scope.table:
+            if isinstance(scope.table[var], Function):
+                if var in function_definitions:
+                    declared = scope.table[var]
+                    defined = function_definitions[var]
+                    if type(declared.ret_val) != type(defined.ret_val):
+                        print("funkcija")
+                        exit()
+                    if isinstance(declared.params, Void) != isinstance(defined.params, Void):
+                        print("funkcija")
+                        exit()
+                    if not isinstance(declared.params, Void) and not isinstance(defined.params, Void):
+                        if len(declared.params) == len(defined.params):
+                            for i in range(len(declared.params)):
+                                if type(declared.params[i]) != type(defined.params[i]):
+                                    print("funkcija")
+                                    exit()
+                        else:
+                            print("funkcija")
+                            exit()
+                else:
+                    print("funkcija")
+                    exit()
