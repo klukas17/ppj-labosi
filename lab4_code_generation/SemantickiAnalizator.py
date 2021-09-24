@@ -50,26 +50,36 @@ class Numeric_Type():
 class Int(Numeric_Type):
     def __init__(self):
         Numeric_Type.__init__(self)
+    def __repr__(self) -> str:
+        return "Int"
 
 # klasa za modeliranje znaka
 class Char(Numeric_Type):
     def __init__(self):
         Numeric_Type.__init__(self)
+    def __repr__(self) -> str:
+        return "Char"
 
 # klasa za modeliranje konstante varijable
 class Const():
     def __init__(self, primitive: Numeric_Type):
         self.primitive = primitive
+    def __repr__(self) -> str:
+        return f'Const({self.primitive})'
 
 # klasa za modeliranje nizova
 class Array():
     def __init__(self, primitive: Union[Numeric_Type, Const]):
         self.primitive = primitive
+    def __repr__(self) -> str:
+        return f'Array({self.primitive})'
 
 # klasa za modeliranje tipa void
 class Void():
     def __init__(self):
         pass
+    def __repr__(self) -> str:
+        return "Void"
 
 # klasa za modeliranje funkcije
 class Function():
@@ -1118,7 +1128,7 @@ def provjeri_izravni_deklarator(node: Node):
         node.symbol_table.table[node.children[0].lexical_unit] = node
 
         node.attributes["tip"] = node.attributes["ntip"]
-        node.attributes["l-izraz"] = 1
+        node.attributes["l-izraz"] = 1 if not isinstance(node.attributes["tip"], Const) else 0
 
     elif children == ["IDN", "L_UGL_ZAGRADA", "BROJ", "D_UGL_ZAGRADA"]:
         if isinstance(node.attributes["ntip"], Void):
@@ -1374,4 +1384,3 @@ def semantic_analysis():
                 else:
                     print("funkcija")
                     exit()
-    pass
