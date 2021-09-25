@@ -1,4 +1,16 @@
+'''
+REGISTRI POSEBNE NAMJENE
+    R6 - povratna vrijednost funkcije
+    R5 - početak okvira stoga trenutnog djelokruga
+'''
+
 import SemantickiAnalizator as s
+
+# klasa za modeliranje varijable u nekom djelokrugu
+class Variable():
+    def __init__(self, node: s.Node, dist: int):
+        self.node = node
+        self.dist = dist
 
 # varijabla za tabulatore u a.frisc datoteci
 tabs = "\t\t"
@@ -9,8 +21,11 @@ functions = {}
 # tablica globalnih varijabli
 globals = {}
 
-# adresa početka globalnih varijabli
-global_curr = 12
+# tablica konstanti
+constants = {}
+
+# globalni djelokrug
+global_scope = None
 
 # brojači
 function_counter = 0
@@ -23,6 +38,31 @@ machine_code = open("a.frisc", "w")
 # funkcija generira strojni kod za danu funkciju
 def generate_function(f):
     machine_code.write(f'{functions[f]}\n')
+
+    function_body = s.function_definitions[f]
+    dist = 0
+
+    # stvaranje mjesta na stogu za parametre funkcije
+    if not isinstance(function_body.params, s.Void):
+        parameters = function_body.node.children[3]
+        for parameter in parameters.attributes["imena"]:
+            parameters.symbol_table.table[parameter].dist = dist
+            dist += 4
+    
+    # ostavljanje mjesta za povratnu adresu na stogu
+    dist += 4
+
+    # praćenje veličine lokalnih podataka
+    old_dist = dist
+
+    # stvaranje lokalnih varijabli na stogu
+    for l in function_body.node.symbol_table.table:
+        if function_body.node.symbol_table.table[l].dist is None:
+            dist = generate_local_variable(l, function_body.node.symbol_table, dist)
+
+    if old_dist != dist:
+        machine_code.write(f'{tabs}ADD R7, {dist-old_dist}, R7\n')
+
     machine_code.write(f'{tabs}RET\n\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
@@ -30,7 +70,7 @@ def generate_global(g):
     machine_code.write(f'{globals[g]}{tabs}')
 
     # dohvaćanje varijable
-    item = s.generative_tree_root.symbol_table.table[g]
+    item = s.generative_tree_root.symbol_table.table[g].node
 
     # polje
     if isinstance(item.attributes["tip"], s.Array):
@@ -157,6 +197,166 @@ def generate_global(g):
 
                 machine_code.write(f'{ord(node.lexical_unit[1])}\n\n')
 
+# funkcija generira strojni kod za dane lokalne deklaracije
+def generate_local_variable(l, scope, dist) -> int:
+    global constant_counter
+    
+    item = scope.table[l].node.node
+
+    # polje
+    if isinstance(item.attributes["tip"], s.Array):
+        
+        tip = item.attributes["tip"].primitive
+
+        if isinstance(tip, s.Const):
+            tip = tip.primitive
+
+        elem_count = item.attributes["br-elem"]
+        items = []
+
+        if isinstance(tip, s.Int):
+            brothers = item.parent.children
+
+            if len(brothers) == 3:
+                expressions = brothers[2].children[1].children
+                while len(expressions) > 1:
+                    last_child = expressions[2]
+                    expressions = expressions[0].children
+                    while isinstance(last_child, s.Node):
+                        last_child = last_child.children[0]
+                    items.insert(0, int(last_child.lexical_unit))
+
+                last_child = expressions[0]
+                while isinstance(last_child, s.Node):
+                    last_child = last_child.children[0]
+                items.insert(0, int(last_child.lexical_unit))
+
+            while len(items) < elem_count:
+                items.append(0)
+
+            items = items[::-1]
+
+            dist += len(items) * 4
+            scope.table[l].dist = dist
+
+            for item in items:
+                
+                if item not in constants:
+                    constant_counter += 1
+                    constants[item] = f'C_{constant_counter}'
+
+                label = constants[item]
+
+                machine_code.write(f'{tabs}LOAD R0, ({label})\n')
+                machine_code.write(f'{tabs}PUSH R0\n')
+
+        elif isinstance(tip, s.Char):
+            brothers = item.parent.children
+
+            if len(brothers) == 3:
+                expressions = brothers[2].children
+
+                if len(expressions) == 3:
+                    expressions = expressions[1].children
+                    while len(expressions) > 1:
+                        last_child = expressions[2]
+                        expressions = expressions[0].children
+                        while isinstance(last_child, s.Node):
+                            last_child = last_child.children[0]
+                        items.insert(0, ord(last_child.lexical_unit[1]))
+                    
+                    last_child = expressions[0]
+                    while isinstance(last_child, s.Node):
+                        last_child = last_child.children[0]
+                    items.insert(0, ord(last_child.lexical_unit[1]))
+
+                    while len(items) < elem_count:
+                        items.append(0)
+
+                    items = items[::-1]
+
+                    dist += len(items) * 4
+                    scope.table[l].dist = dist
+
+                    for item in items:
+                        
+                        if item not in constants:
+                            constant_counter += 1
+                            constants[item] = f'C_{constant_counter}'
+
+                        label = constants[item]
+
+                        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
+                        machine_code.write(f'{tabs}PUSH R0\n')
+
+                elif len(expressions) == 1:
+                    child = expressions[0]
+                    while isinstance(child, s.Node):
+                        child = child.children[0]
+
+                    items = child.lexical_unit[1:len(child.lexical_unit)-1]
+                    items = list(items)
+                    items = [ord(x) for x in items]
+                    
+                    while len(items) < elem_count:
+                        items.append(0)
+
+                    items = items[::-1]
+
+                    dist += len(items) * 4
+                    scope.table[l].dist = dist
+
+                    for item in items:
+                        
+                        if item not in constants:
+                            constant_counter += 1
+                            constants[item] = f'C_{constant_counter}'
+
+                        label = constants[item]
+
+                        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
+                        machine_code.write(f'{tabs}PUSH R0\n')
+
+    # varijabla
+    else:
+        
+        tip = item.attributes["tip"]
+        
+        if isinstance(tip, s.Const):
+            tip = tip.primitive
+    
+        if len(item.parent.children) == 1:
+            value = 0
+
+        elif len(item.parent.children) == 3:
+
+            node = item.parent.children[2]
+
+            while isinstance(node, s.Node):
+                if len(node.children) > 1:
+                    raise NotImplementedError
+                node = node.children[0]
+
+            if isinstance(tip, s.Int):
+                value = int(node.lexical_unit)
+
+            elif isinstance(tip, s.Char):
+                value = ord(node.lexical_unit[1])
+
+        if value not in constants:
+            constant_counter += 1
+            constants[value] = f'C_{constant_counter}'
+
+        label = constants[value]
+
+        dist += 4
+        scope.table[l].dist = dist
+
+        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
+        machine_code.write(f'{tabs}PUSH R0\n')
+
+    return dist
+
 if __name__ == "__main__":
     
     # semantička analiza nad generativnim stablom na standardnom ulazu
@@ -169,6 +369,9 @@ if __name__ == "__main__":
 
     # dodavanje main funkcije u riječnik funkcija
     functions["main"] = "F_MAIN"
+
+    # spremanje globalnog djelokruga u posebnu varijablu
+    global_scope = s.generative_tree_root.symbol_table.table
 
     # obrada globalnih varijabli i funkcija
     for item in s.generative_tree_root.symbol_table.table:
@@ -186,6 +389,12 @@ if __name__ == "__main__":
             global_counter += 1
             globals[item] = f'G_{global_counter}'
 
+    # dodavanje mjesta za podatak o odmaku od referentne točke okvira stoga pojedine varijable
+    for scope in s.scopes:
+        for unit in scope.table:
+            if not isinstance(unit, s.Function):
+                scope.table[unit] = Variable(scope.table[unit], None)
+
     # obrada funkcija
     for f in functions:
         generate_function(f)
@@ -193,6 +402,10 @@ if __name__ == "__main__":
     # obrada globalnih varijabli
     for g in globals:
         generate_global(g)
+
+    # zapis konstanti
+    for c in constants:
+        machine_code.write(f'{constants[c]}{tabs}DW %D {c}\n')
 
     # zatvaranje datoteke
     machine_code.close()
