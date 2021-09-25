@@ -63,6 +63,11 @@ def generate_function(f):
     if old_dist != dist:
         machine_code.write(f'{tabs}ADD R7, {dist-old_dist}, R7\n')
 
+    function_body.node.symbol_table.dist = dist
+
+    for variable in function_body.node.symbol_table.table:
+        function_body.node.symbol_table.table[variable].dist = dist - 4 - function_body.node.symbol_table.table[variable].dist
+
     machine_code.write(f'{tabs}RET\n\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
@@ -236,8 +241,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
             items = items[::-1]
 
+            scope.table[l].dist = dist + (len(items)-1)*4
             dist += len(items) * 4
-            scope.table[l].dist = dist
 
             for item in items:
                 
@@ -275,8 +280,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
                     items = items[::-1]
 
+                    scope.table[l].dist = dist + (len(items)-1)*4
                     dist += len(items) * 4
-                    scope.table[l].dist = dist
 
                     for item in items:
                         
@@ -303,8 +308,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
                     items = items[::-1]
 
+                    scope.table[l].dist = dist + (len(items)-1)*4
                     dist += len(items) * 4
-                    scope.table[l].dist = dist
 
                     for item in items:
                         
@@ -349,8 +354,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
         label = constants[value]
 
-        dist += 4
         scope.table[l].dist = dist
+        dist += 4
 
         machine_code.write(f'{tabs}LOAD R0, ({label})\n')
         machine_code.write(f'{tabs}PUSH R0\n')

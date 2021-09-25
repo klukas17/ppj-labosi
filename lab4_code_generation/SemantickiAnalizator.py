@@ -5,6 +5,7 @@ class Symbol_Table():
     def __init__(self):
         self.table = {}
         self.parent = None
+        self.dist = None
 
 # apstraktna klasa za modeliranje čvora generativnog stabla
 class Abs_Node():
