@@ -65,9 +65,6 @@ def generate_function(f):
         if function_body.node.symbol_table.table[l].dist is None:
             dist = generate_local_variable(l, function_body.node.symbol_table, dist)
 
-    if old_dist != dist:
-        machine_code.write(f'{spaces * " "}ADD R7, {dist-old_dist}, R7\n')
-
     function_body.node.symbol_table.dist = dist
 
     for variable in function_body.node.symbol_table.table:
@@ -81,7 +78,10 @@ def generate_function(f):
     instructions.insert(0, body.children[0])
 
     for instruction in instructions:
-        generate_instruction(instruction, function_body.node.symbol_table)
+        generiraj_instrukcija(instruction)
+
+    if old_dist != dist:
+        machine_code.write(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
 
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
@@ -381,13 +381,12 @@ def generate_local_variable(l, scope, dist) -> int:
 
     return dist
 
-# funkcija generira strojni kod za naredbe dane funkcije
-def generate_instruction(instruction, scope):
+def generiraj_instrukcija(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<slozena_naredba>"]:
-        pass
+        generiraj_slozena_naredba(instruction.children[0])
 
     elif children == ["<izraz_naredba>"]:
         pass
@@ -400,6 +399,47 @@ def generate_instruction(instruction, scope):
 
     elif children == ["<naredba_skoka>"]:
         pass
+
+def generiraj_slozena_naredba(instruction):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    declarations = []
+    instructions = []
+    scope = instruction.symbol_table
+    dist = 0
+
+    # čuvanje konteksta
+    dist += 24
+    for i in [0,1,2,3,4,5]:
+        machine_code.write(f'{spaces * " "}PUSH R{i}\n')
+
+    body = instruction.children[-2]
+    while len(body.children) > 1:
+        instructions.insert(0, body.children[1])
+        body = body.children[0]
+    instructions.insert(0, body.children[0])
+
+    # deklaracije
+    if len(scope.table) > 0:
+        for item in scope.table:
+            dist = generate_local_variable(item, scope, dist)
+
+    for variable in scope.table:
+        scope.table[variable].dist = dist - 4 - scope.table[variable].dist
+
+    scope.dist = dist
+
+    for instruction in instructions:
+        generiraj_instrukcija(instruction)
+
+    # micanje lokalnih varijabli sa stoga
+    if len(scope.table) > 0:
+        machine_code.write(f'{spaces * " "}ADD R7, %D {scope.dist-24}, R7\n')
+
+    # obnova konteksta
+    for i in [5,4,3,2,1,0]:
+        machine_code.write(f'{spaces * " "}POP R{i}\n')
 
 if __name__ == "__main__":
     
