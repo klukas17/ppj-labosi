@@ -13,7 +13,7 @@ class Variable():
         self.dist = dist
 
 # varijabla za tabulatore u a.frisc datoteci
-tabs = "\t\t"
+spaces = 12
 
 # tablica funkcija
 functions = {}
@@ -52,6 +52,11 @@ def generate_function(f):
     # ostavljanje mjesta za povratnu adresu na stogu
     dist += 4
 
+    # čuvanje konteksta
+    dist += 24
+    for i in [0,1,2,3,4,5]:
+        machine_code.write(f'{spaces * " "}PUSH R{i}\n')
+
     # praćenje veličine lokalnih podataka
     old_dist = dist
 
@@ -61,18 +66,32 @@ def generate_function(f):
             dist = generate_local_variable(l, function_body.node.symbol_table, dist)
 
     if old_dist != dist:
-        machine_code.write(f'{tabs}ADD R7, {dist-old_dist}, R7\n')
+        machine_code.write(f'{spaces * " "}ADD R7, {dist-old_dist}, R7\n')
 
     function_body.node.symbol_table.dist = dist
 
     for variable in function_body.node.symbol_table.table:
         function_body.node.symbol_table.table[variable].dist = dist - 4 - function_body.node.symbol_table.table[variable].dist
 
-    machine_code.write(f'{tabs}RET\n\n')
+    instructions = []
+    body = function_body.node.children[5].children[-2]
+    while len(body.children) > 1:
+        instructions.insert(0, body.children[1])
+        body = body.children[0]
+    instructions.insert(0, body.children[0])
+
+    for instruction in instructions:
+        generate_instruction(instruction, function_body.node.symbol_table)
+
+    # obnova konteksta
+    for i in [5,4,3,2,1,0]:
+        machine_code.write(f'{spaces * " "}POP R{i}\n')
+
+    machine_code.write(f'{spaces * " "}RET\n\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
 def generate_global(g):
-    machine_code.write(f'{globals[g]}{tabs}')
+    machine_code.write(f'{globals[g]}{(spaces-len(globals[g])) * " "}')
 
     # dohvaćanje varijable
     item = s.generative_tree_root.symbol_table.table[g].node
@@ -206,7 +225,7 @@ def generate_global(g):
 def generate_local_variable(l, scope, dist) -> int:
     global constant_counter
     
-    item = scope.table[l].node.node
+    item = scope.table[l].node
 
     # polje
     if isinstance(item.attributes["tip"], s.Array):
@@ -252,8 +271,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
                 label = constants[item]
 
-                machine_code.write(f'{tabs}LOAD R0, ({label})\n')
-                machine_code.write(f'{tabs}PUSH R0\n')
+                machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+                machine_code.write(f'{spaces * " "}PUSH R0\n')
 
         elif isinstance(tip, s.Char):
             brothers = item.parent.children
@@ -291,8 +310,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
                         label = constants[item]
 
-                        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
-                        machine_code.write(f'{tabs}PUSH R0\n')
+                        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+                        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
                 elif len(expressions) == 1:
                     child = expressions[0]
@@ -319,8 +338,8 @@ def generate_local_variable(l, scope, dist) -> int:
 
                         label = constants[item]
 
-                        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
-                        machine_code.write(f'{tabs}PUSH R0\n')
+                        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+                        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
     # varijabla
     else:
@@ -357,10 +376,30 @@ def generate_local_variable(l, scope, dist) -> int:
         scope.table[l].dist = dist
         dist += 4
 
-        machine_code.write(f'{tabs}LOAD R0, ({label})\n')
-        machine_code.write(f'{tabs}PUSH R0\n')
+        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
     return dist
+
+# funkcija generira strojni kod za naredbe dane funkcije
+def generate_instruction(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<slozena_naredba>"]:
+        pass
+
+    elif children == ["<izraz_naredba>"]:
+        pass
+    
+    elif children == ["<naredba_grananja>"]:
+        pass
+
+    elif children == ["<naredba_petlje>"]:
+        pass
+
+    elif children == ["<naredba_skoka>"]:
+        pass
 
 if __name__ == "__main__":
     
@@ -368,9 +407,9 @@ if __name__ == "__main__":
     s.semantic_analysis()
 
     # inicijalizacija i završetak izvođenja programa
-    machine_code.write(f'{tabs}MOVE 40000, R7\n')
-    machine_code.write(f'{tabs}CALL F_MAIN\n')
-    machine_code.write(f'{tabs}HALT\n\n')
+    machine_code.write(f'{spaces * " "}MOVE 40000, R7\n')
+    machine_code.write(f'{spaces * " "}CALL F_MAIN\n')
+    machine_code.write(f'{spaces * " "}HALT\n\n')
 
     # dodavanje main funkcije u riječnik funkcija
     functions["main"] = "F_MAIN"
@@ -410,7 +449,7 @@ if __name__ == "__main__":
 
     # zapis konstanti
     for c in constants:
-        machine_code.write(f'{constants[c]}{tabs}DW %D {c}\n')
+        machine_code.write(f'{constants[c]}{(spaces-len(constants[c])) * " "}DW %D {c}\n')
 
     # zatvaranje datoteke
     machine_code.close()

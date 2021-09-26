@@ -725,7 +725,7 @@ def provjeri_slozena_naredba(node: Node):
         new_symbol_table.parent = node.symbol_table
         node.symbol_table = new_symbol_table
 
-    scopes.append(node.symbol_table)
+        scopes.append(node.symbol_table)
 
     for child in node.children:
         if isinstance(child, Node):
@@ -987,6 +987,8 @@ def provjeri_lista_parametara(node: Node):
 
         node.attributes["tipovi"] = [node.children[0].attributes["tip"]]
         node.attributes["imena"] = [node.children[0].attributes["ime"]]
+        node.children[0].attributes["l-izraz"] = 1 if not isinstance(node.children[0].attributes["tip"], Array) else 0
+        node.attributes["l-izrazi"] = [node.children[0].attributes["l-izraz"]]
 
     elif children == ["<lista_parametara>", "ZAREZ", "<deklaracija_parametra>"]:
         provjeri_lista_parametara(node.children[0])
@@ -996,6 +998,8 @@ def provjeri_lista_parametara(node: Node):
 
         node.attributes["tipovi"] = node.children[0].attributes["tipovi"] + [node.children[2].attributes["tip"] if "tip" in node.children[2].attributes else None]
         node.attributes["imena"] = node.children[0].attributes["imena"] + [node.children[2].attributes["ime"] if "ime" in node.children[2].attributes else None]
+        node.children[2].attributes["l-izraz"] = 1 if not isinstance(node.children[2].attributes["tip"], Array) else 0
+        node.attributes["l-izrazi"] = node.children[0].attributes["l-izrazi"] + [node.children[2].attributes["l-izraz"] if "l-izraz" in node.children[2].attributes else None]
 
 def provjeri_deklaracija_parametra(node: Node):
 
