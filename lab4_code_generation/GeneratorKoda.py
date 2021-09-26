@@ -389,7 +389,7 @@ def generiraj_instrukcija(instruction):
         generiraj_slozena_naredba(instruction.children[0])
 
     elif children == ["<izraz_naredba>"]:
-        pass
+        generiraj_izraz_naredba(instruction.children[0])
     
     elif children == ["<naredba_grananja>"]:
         pass
@@ -401,10 +401,7 @@ def generiraj_instrukcija(instruction):
         pass
 
 def generiraj_slozena_naredba(instruction):
-    
-    children = list(map(lambda n: n.symbol, instruction.children))
 
-    declarations = []
     instructions = []
     scope = instruction.symbol_table
     dist = 0
@@ -440,6 +437,212 @@ def generiraj_slozena_naredba(instruction):
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
         machine_code.write(f'{spaces * " "}POP R{i}\n')
+
+def generiraj_izraz_naredba(instruction):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<izraz>", "TOCKAZAREZ"]:
+        generiraj_izraz(instruction.children[0])
+
+def generiraj_izraz(instruction):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+            
+    if children == ["<izraz_pridruzivanja>"]:
+        generiraj_izraz_pridruzivanja(instruction.children[0])
+
+    elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
+        generiraj_izraz(instruction.children[0])
+        generiraj_izraz_pridruzivanja(instruction.children[2])
+
+def generiraj_izraz_pridruzivanja(instruction):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+            
+    if children == ["<log_ili_izraz>"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
+        pass
+
+def generiraj_log_ili_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<log_i_izraz>"]:
+        pass
+
+    elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
+        pass
+
+def generiraj_log_i_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_ili_izraz>"]:
+        pass
+
+    elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
+        pass
+
+def generiraj_bin_ili_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_xili_izraz>"]:
+        pass
+
+    elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
+        pass
+
+def generiraj_bin_xili_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_i_izraz>"]:
+        pass
+
+    elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
+        pass
+
+def generiraj_bin_i_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<jednakosni_izraz>"]:
+        pass
+
+    elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
+        pass
+
+def generiraj_jednakosni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<odnosni_izraz>"]:
+        pass
+
+    elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
+        pass
+
+    elif children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
+        pass
+
+def generiraj_odnosni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<aditivni_izraz>"]:
+        pass
+
+    elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
+        pass
+
+    elif children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"]:
+        pass
+
+    elif children == ["<odnosni_izraz>", "OP_LTE", "<aditivni_izraz>"]:
+        pass
+
+    elif children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
+        pass
+
+def generiraj_aditivni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<multiplikativni_izraz>"]:
+        pass
+
+    elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
+        pass
+
+    elif children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
+        pass
+
+def generiraj_multiplikativni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<cast_izraz>"]:
+        pass
+
+    elif children == ["<multiplikativni izraz>", "OP_PUTA", "<cast_izraz>"]:
+        pass
+
+    elif children == ["<multiplikativni izraz>", "OP_DIJELI", "<cast_izraz>"]:
+        pass
+
+    elif children == ["<multiplikativni izraz>", "OP_MOD", "<cast_izraz>"]:
+        pass
+
+def generiraj_cast_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<unarni_izraz>"]:
+        pass
+
+    elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
+        pass 
+
+def generiraj_unarni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<postfiks_izraz>"]:
+        pass
+
+    elif children == ["OP_INC", "<unarni_izraz>"]:
+        pass
+
+    elif children == ["OP_DEC", "<unarni_izraz>"]:
+        pass
+
+    elif children == ["<unarni_operator>", "<cast_izraz>"]:
+        pass
+
+def generiraj_postfiks_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<primarni_izraz>"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "D_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "<lista_argumenata>", "D_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "OP_INC"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "OP_DEC"]:
+        pass
+
+def generiraj_primarni_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["IDN"]:
+        pass
+
+    elif children == ["BROJ"]:
+        pass
+
+    elif children == ["ZNAK"]:
+        pass
+
+    elif children == ["NIZ_ZNAKOVA"]:
+        pass
+
+    elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
+        pass
 
 if __name__ == "__main__":
     
