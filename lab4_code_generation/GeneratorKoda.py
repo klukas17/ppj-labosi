@@ -35,27 +35,41 @@ constant_counter = 0
 # globalna varijabla za a.frisc datoteku
 machine_code = open("a.frisc", "w")
 
+# temp funkcija za debugging
+def p(s):
+    machine_code.write(s)
+    print(s,end='')
+
 # funkcija generira strojni kod za danu funkciju
 def generate_function(f):
-    machine_code.write(f'{functions[f]}\n')
+    p(f'{functions[f]}\n')
 
     function_body = s.function_definitions[f]
     dist = 0
 
-    # stvaranje mjesta na stogu za parametre funkcije
     if not isinstance(function_body.params, s.Void):
         parameters = function_body.node.children[3]
         for parameter in parameters.attributes["imena"]:
-            parameters.symbol_table.table[parameter].dist = dist
+            parameters.symbol_table.table[parameter].dist = 0
             dist += 4
-    
+            for param in function_body.node.symbol_table.table:
+                if function_body.node.symbol_table.table[param].dist is not None and param != parameter:
+                    function_body.node.symbol_table.table[param].dist += 4
+
     # ostavljanje mjesta za povratnu adresu na stogu
     dist += 4
 
     # čuvanje konteksta
     dist += 24
     for i in [0,1,2,3,4,5]:
-        machine_code.write(f'{spaces * " "}PUSH R{i}\n')
+        p(f'{spaces * " "}PUSH R{i}\n')
+
+    for param in function_body.node.symbol_table.table:
+        if function_body.node.symbol_table.table[param].dist is not None:
+            function_body.node.symbol_table.table[param].dist += 28
+
+    # ažuriranje okvira stoga
+    p(f'{spaces * " "}MOVE R7, R5\n')
 
     # praćenje veličine lokalnih podataka
     old_dist = dist
@@ -63,15 +77,18 @@ def generate_function(f):
     # stvaranje lokalnih varijabli na stogu
     for l in function_body.node.symbol_table.table:
         if function_body.node.symbol_table.table[l].dist is None:
+            dist_before = dist
             dist = generate_local_variable(l, function_body.node.symbol_table, dist)
+            diff = dist - dist_before
+            if diff > 0:
+                for param in function_body.node.symbol_table.table:
+                    if function_body.node.symbol_table.table[param].dist is not None and param != l:
+                        function_body.node.symbol_table.table[param].dist += diff
+
+            # ažuriranje okvira stoga
+            p(f'{spaces * " "}MOVE R7, R5\n')
 
     function_body.node.symbol_table.dist = dist
-
-    for variable in function_body.node.symbol_table.table:
-        function_body.node.symbol_table.table[variable].dist = dist - 4 - function_body.node.symbol_table.table[variable].dist
-
-    # spremanje okvira stoga
-    machine_code.write(f'{spaces * " "}MOVE R7, R5\n')
 
     instructions = []
     body = function_body.node.children[5].children[-2]
@@ -84,17 +101,18 @@ def generate_function(f):
         generiraj_naredba(instruction)
 
     if old_dist != dist:
-        machine_code.write(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
+        p(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
 
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
-        machine_code.write(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}POP R{i}\n')
 
-    machine_code.write(f'{spaces * " "}RET\n\n')
+    # povratak iz funkcije
+    p(f'{spaces * " "}RET\n\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
 def generate_global(g):
-    machine_code.write(f'{globals[g]}{(spaces-len(globals[g])) * " "}')
+    p(f'{globals[g]}{(spaces-len(globals[g])) * " "}')
 
     # dohvaćanje varijable
     item = s.generative_tree_root.symbol_table.table[g].node
@@ -111,7 +129,7 @@ def generate_global(g):
         written_count = 0
 
         if isinstance(tip, s.Int):
-            machine_code.write("DW ")
+            p("DW ")
 
             brothers = item.parent.children
             if len(brothers) == 3:
@@ -130,21 +148,21 @@ def generate_global(g):
                 l.insert(0, last_child.lexical_unit)
 
                 for item in l:
-                    machine_code.write(f'%D {item}')
+                    p(f'%D {item}')
                     written_count += 1
                     if written_count < elem_count:
-                        machine_code.write(", ")
+                        p(", ")
 
             while written_count < elem_count:
-                machine_code.write("%D 0")
+                p("%D 0")
                 if written_count + 1 < elem_count:
-                    machine_code.write(", ")
+                    p(", ")
                 written_count += 1
 
-            machine_code.write("\n\n")
+            p("\n\n")
 
         elif isinstance(tip, s.Char):
-            machine_code.write("DW ")
+            p("DW ")
 
             brothers = item.parent.children
             if len(brothers) == 3:
@@ -166,10 +184,10 @@ def generate_global(g):
                     l.insert(0, last_child.lexical_unit)
 
                     for item in l:
-                        machine_code.write(f'%D {ord(item[1])}')
+                        p(f'%D {ord(item[1])}')
                         written_count += 1
                         if written_count < elem_count:
-                            machine_code.write(", ")
+                            p(", ")
 
                 elif len(expressions) == 1:
                     child = expressions[0]
@@ -178,16 +196,16 @@ def generate_global(g):
 
                     arr = child.lexical_unit[1:len(child.lexical_unit)-1]
                     for el in arr:
-                        machine_code.write(f'%D {ord(el)}, ')
+                        p(f'%D {ord(el)}, ')
                         written_count += 1
 
             while written_count < elem_count:
-                machine_code.write("%D 0")
+                p("%D 0")
                 if written_count + 1 < elem_count:
-                    machine_code.write(", ")
+                    p(", ")
                 written_count += 1
 
-            machine_code.write("\n\n")
+            p("\n\n")
 
     # varijabla
     else:
@@ -198,10 +216,10 @@ def generate_global(g):
             tip = tip.primitive
 
         if isinstance(tip, s.Int):
-            machine_code.write("DW %D ")
+            p("DW %D ")
 
             if len(item.parent.children) == 1:
-                machine_code.write('0\n\n')
+                p('0\n\n')
 
             elif len(item.parent.children) == 3:
 
@@ -209,20 +227,20 @@ def generate_global(g):
                 while isinstance(node, s.Node):
                     node = node.children[0]
 
-                machine_code.write(f'{node.lexical_unit}\n\n')
+                p(f'{node.lexical_unit}\n\n')
 
         elif isinstance(tip, s.Char):
-            machine_code.write("DW %D ")
+            p("DW %D ")
 
             if len(item.parent.children) == 1:
-                machine_code.write('0\n\n')
+                p('0\n\n')
 
             elif len(item.parent.children) == 3:
                 node = item.parent.children[2]
                 while isinstance(node, s.Node):
                     node = node.children[0]
 
-                machine_code.write(f'{ord(node.lexical_unit[1])}\n\n')
+                p(f'{ord(node.lexical_unit[1])}\n\n')
 
 # funkcija generira strojni kod za dane lokalne deklaracije
 def generate_local_variable(l, scope, dist) -> int:
@@ -245,37 +263,35 @@ def generate_local_variable(l, scope, dist) -> int:
             brothers = item.parent.children
 
             if len(brothers) == 3:
-                expressions = brothers[2].children[1].children
-                while len(expressions) > 1:
-                    last_child = expressions[2]
-                    expressions = expressions[0].children
-                    while isinstance(last_child, s.Node):
-                        last_child = last_child.children[0]
-                    items.insert(0, int(last_child.lexical_unit))
 
-                last_child = expressions[0]
-                while isinstance(last_child, s.Node):
-                    last_child = last_child.children[0]
-                items.insert(0, int(last_child.lexical_unit))
+                expressions = brothers[2].children[1].children
+
+                while len(expressions) == 3:
+                    items.append(expressions[2])
+                    expressions = expressions[0].children
+                items.append(expressions[0])
 
             while len(items) < elem_count:
-                items.append(0)
+                items.insert(0, None)
 
-            items = items[::-1]
-
-            scope.table[l].dist = dist + (len(items)-1)*4
+            scope.table[l].dist = 0
             dist += len(items) * 4
 
             for item in items:
-                
-                if item not in constants:
-                    constant_counter += 1
-                    constants[item] = f'C_{constant_counter}'
 
-                label = constants[item]
+                if item is None:
+                    val = 0
+                    if val not in constants:
+                        constant_counter += 1
+                        constants[val] = f'C_{constant_counter}'
 
-                machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-                machine_code.write(f'{spaces * " "}PUSH R0\n')
+                    label = constants[val]
+
+                    p(f'{spaces * " "}LOAD R0, ({label})\n')
+                    p(f'{spaces * " "}PUSH R0\n')
+
+                else:
+                    generiraj_izraz_pridruzivanja(item)
 
         elif isinstance(tip, s.Char):
             brothers = item.parent.children
@@ -285,36 +301,33 @@ def generate_local_variable(l, scope, dist) -> int:
 
                 if len(expressions) == 3:
                     expressions = expressions[1].children
-                    while len(expressions) > 1:
-                        last_child = expressions[2]
+
+                    while len(expressions) == 3:
+                        items.append(expressions[2])
                         expressions = expressions[0].children
-                        while isinstance(last_child, s.Node):
-                            last_child = last_child.children[0]
-                        items.insert(0, ord(last_child.lexical_unit[1]))
-                    
-                    last_child = expressions[0]
-                    while isinstance(last_child, s.Node):
-                        last_child = last_child.children[0]
-                    items.insert(0, ord(last_child.lexical_unit[1]))
+                    items.append(expressions[0])
 
                     while len(items) < elem_count:
-                        items.append(0)
-
-                    items = items[::-1]
-
-                    scope.table[l].dist = dist + (len(items)-1)*4
-                    dist += len(items) * 4
+                        items.insert(0, None)
 
                     for item in items:
-                        
-                        if item not in constants:
-                            constant_counter += 1
-                            constants[item] = f'C_{constant_counter}'
 
-                        label = constants[item]
+                        if item is None:
+                            val = 0
+                            if val not in constants:
+                                constant_counter += 1
+                                constants[val] = f'C_{constant_counter}'
 
-                        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-                        machine_code.write(f'{spaces * " "}PUSH R0\n')
+                            label = constants[val]
+
+                            p(f'{spaces * " "}LOAD R0, ({label})\n')
+                            p(f'{spaces * " "}PUSH R0\n')
+
+                        else:
+                            generiraj_izraz_pridruzivanja(item)
+
+                    scope.table[l].dist = 0
+                    dist += len(items) * 4
 
                 elif len(expressions) == 1:
                     child = expressions[0]
@@ -330,7 +343,7 @@ def generate_local_variable(l, scope, dist) -> int:
 
                     items = items[::-1]
 
-                    scope.table[l].dist = dist + (len(items)-1)*4
+                    scope.table[l].dist = 0
                     dist += len(items) * 4
 
                     for item in items:
@@ -341,8 +354,27 @@ def generate_local_variable(l, scope, dist) -> int:
 
                         label = constants[item]
 
-                        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-                        machine_code.write(f'{spaces * " "}PUSH R0\n')
+                        p(f'{spaces * " "}LOAD R0, ({label})\n')
+                        p(f'{spaces * " "}PUSH R0\n')
+
+            elif len(brothers) == 1:
+                
+                for _ in range(elem_count):
+                    items.append(0)
+
+                for item in items:
+
+                    if item not in constants:
+                        constant_counter += 1
+                        constants[item] = f'C_{constant_counter}'
+
+                    label = constants[item]
+
+                    p(f'{spaces * " "}LOAD R0, ({label})\n')
+                    p(f'{spaces * " "}PUSH R0\n')
+
+                scope.table[l].dist = 0
+                dist += 4 * elem_count
 
     # varijabla
     else:
@@ -355,32 +387,23 @@ def generate_local_variable(l, scope, dist) -> int:
         if len(item.parent.children) == 1:
             value = 0
 
+            if value not in constants:
+                constant_counter += 1
+                constants[value] = f'C_{constant_counter}'
+
+            label = constants[value]
+
+            p(f'{spaces * " "}LOAD R0, ({label})\n')
+            p(f'{spaces * " "}PUSH R0\n')
+
         elif len(item.parent.children) == 3:
 
-            node = item.parent.children[2]
+            generiraj_izraz_pridruzivanja(item.parent.children[2].children[0])
 
-            while isinstance(node, s.Node):
-                if len(node.children) > 1:
-                    raise NotImplementedError
-                node = node.children[0]
+            # na stogu se sada nalazi ta varijabla s vrijednošću i nije ju potrebno mijenjati
 
-            if isinstance(tip, s.Int):
-                value = int(node.lexical_unit)
-
-            elif isinstance(tip, s.Char):
-                value = ord(node.lexical_unit[1])
-
-        if value not in constants:
-            constant_counter += 1
-            constants[value] = f'C_{constant_counter}'
-
-        label = constants[value]
-
-        scope.table[l].dist = dist
+        scope.table[l].dist = 0
         dist += 4
-
-        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
     return dist
 
@@ -393,7 +416,7 @@ def generiraj_naredba(instruction):
 
     elif children == ["<izraz_naredba>"]:
         generiraj_izraz_naredba(instruction.children[0])
-        machine_code.write(f'{spaces * " "}ADD R7, %D 4, R7\n')
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
     
     elif children == ["<naredba_grananja>"]:
         pass
@@ -413,7 +436,7 @@ def generiraj_slozena_naredba(instruction):
     # čuvanje konteksta
     dist += 24
     for i in [0,1,2,3,4,5]:
-        machine_code.write(f'{spaces * " "}PUSH R{i}\n')
+        p(f'{spaces * " "}PUSH R{i}\n')
 
     body = instruction.children[-2]
     while len(body.children) > 1:
@@ -430,7 +453,7 @@ def generiraj_slozena_naredba(instruction):
         scope.table[variable].dist = dist - 4 - scope.table[variable].dist
 
     # spremanje okvira stoga
-    machine_code.write(f'{spaces * " "}MOVE R7, R5\n')
+    p(f'{spaces * " "}MOVE R7, R5\n')
 
     scope.dist = dist
 
@@ -439,11 +462,11 @@ def generiraj_slozena_naredba(instruction):
 
     # micanje lokalnih varijabli sa stoga
     if len(scope.table) > 0:
-        machine_code.write(f'{spaces * " "}ADD R7, %D {scope.dist-24}, R7\n')
+        p(f'{spaces * " "}ADD R7, %D {scope.dist-24}, R7\n')
 
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
-        machine_code.write(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}POP R{i}\n')
 
 def generiraj_izraz_naredba(instruction):
     
@@ -473,15 +496,15 @@ def generiraj_izraz_pridruzivanja(instruction):
         generiraj_izraz_pridruzivanja(instruction.children[2])
         offset = dohvati_postfiks_izraz(instruction.children[0])
 
-        machine_code.write(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}POP R0\n')
 
         if isinstance(offset, str):
-            machine_code.write(f'{spaces * " "}STORE R0, ({offset})\n')
+            p(f'{spaces * " "}STORE R0, ({offset})\n')
 
         elif isinstance(offset, int):
-            machine_code.write(f'{spaces * " "}STORE R0, (R5 + %D {offset})\n')
+            p(f'{spaces * " "}STORE R0, (R5 + %D {offset})\n')
 
-        machine_code.write(f'{spaces * " "}PUSH R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
         
 def generiraj_log_ili_izraz(instruction):
 
@@ -657,8 +680,8 @@ def generiraj_primarni_izraz(instruction):
             constants[item] = f'C_{constant_counter}'
         label = constants[item]
 
-        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-        machine_code.write(f'{spaces * " "}PUSH R0\n')
+        p(f'{spaces * " "}LOAD R0, ({label})\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["ZNAK"]:
         item = ord(instruction.children[0].lexical_unit[1])
@@ -667,8 +690,8 @@ def generiraj_primarni_izraz(instruction):
             constants[item] = f'C_{constant_counter}'
         label = constants[item]
 
-        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
-        machine_code.write(f'{spaces * " "}PUSH R0\n')
+        p(f'{spaces * " "}LOAD R0, ({label})\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["NIZ_ZNAKOVA"]:
         pass
@@ -711,9 +734,9 @@ if __name__ == "__main__":
     s.semantic_analysis()
 
     # inicijalizacija i završetak izvođenja programa
-    machine_code.write(f'{spaces * " "}MOVE 40000, R7\n')
-    machine_code.write(f'{spaces * " "}CALL F_MAIN\n')
-    machine_code.write(f'{spaces * " "}HALT\n\n')
+    p(f'{spaces * " "}MOVE 40000, R7\n')
+    p(f'{spaces * " "}CALL F_MAIN\n')
+    p(f'{spaces * " "}HALT\n\n')
 
     # dodavanje main funkcije u riječnik funkcija
     functions["main"] = "F_MAIN"
@@ -753,7 +776,7 @@ if __name__ == "__main__":
 
     # zapis konstanti
     for c in constants:
-        machine_code.write(f'{constants[c]}{(spaces-len(constants[c])) * " "}DW %D {c}\n')
+        p(f'{constants[c]}{(spaces-len(constants[c])) * " "}DW %D {c}\n')
 
     # zatvaranje datoteke
     machine_code.close()
