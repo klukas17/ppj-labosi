@@ -70,6 +70,9 @@ def generate_function(f):
     for variable in function_body.node.symbol_table.table:
         function_body.node.symbol_table.table[variable].dist = dist - 4 - function_body.node.symbol_table.table[variable].dist
 
+    # spremanje okvira stoga
+    machine_code.write(f'{spaces * " "}MOVE R7, R5\n')
+
     instructions = []
     body = function_body.node.children[5].children[-2]
     while len(body.children) > 1:
@@ -78,7 +81,7 @@ def generate_function(f):
     instructions.insert(0, body.children[0])
 
     for instruction in instructions:
-        generiraj_instrukcija(instruction)
+        generiraj_naredba(instruction)
 
     if old_dist != dist:
         machine_code.write(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
@@ -381,7 +384,7 @@ def generate_local_variable(l, scope, dist) -> int:
 
     return dist
 
-def generiraj_instrukcija(instruction):
+def generiraj_naredba(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -390,6 +393,7 @@ def generiraj_instrukcija(instruction):
 
     elif children == ["<izraz_naredba>"]:
         generiraj_izraz_naredba(instruction.children[0])
+        machine_code.write(f'{spaces * " "}ADD R7, %D 4, R7\n')
     
     elif children == ["<naredba_grananja>"]:
         pass
@@ -425,10 +429,13 @@ def generiraj_slozena_naredba(instruction):
     for variable in scope.table:
         scope.table[variable].dist = dist - 4 - scope.table[variable].dist
 
+    # spremanje okvira stoga
+    machine_code.write(f'{spaces * " "}MOVE R7, R5\n')
+
     scope.dist = dist
 
     for instruction in instructions:
-        generiraj_instrukcija(instruction)
+        generiraj_naredba(instruction)
 
     # micanje lokalnih varijabli sa stoga
     if len(scope.table) > 0:
@@ -453,25 +460,35 @@ def generiraj_izraz(instruction):
         generiraj_izraz_pridruzivanja(instruction.children[0])
 
     elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
-        generiraj_izraz(instruction.children[0])
-        generiraj_izraz_pridruzivanja(instruction.children[2])
+        pass
 
 def generiraj_izraz_pridruzivanja(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
             
     if children == ["<log_ili_izraz>"]:
-        pass
+        generiraj_log_ili_izraz(instruction.children[0])
 
     elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
-        pass
+        generiraj_izraz_pridruzivanja(instruction.children[2])
+        offset = dohvati_postfiks_izraz(instruction.children[0])
 
+        machine_code.write(f'{spaces * " "}POP R0\n')
+
+        if isinstance(offset, str):
+            machine_code.write(f'{spaces * " "}STORE R0, ({offset})\n')
+
+        elif isinstance(offset, int):
+            machine_code.write(f'{spaces * " "}STORE R0, (R5 + %D {offset})\n')
+
+        machine_code.write(f'{spaces * " "}PUSH R0\n')
+        
 def generiraj_log_ili_izraz(instruction):
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<log_i_izraz>"]:
-        pass
+        generiraj_log_i_izraz(instruction.children[0])
 
     elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
         pass
@@ -481,7 +498,7 @@ def generiraj_log_i_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_ili_izraz>"]:
-        pass
+        generiraj_bin_ili_izraz(instruction.children[0])
 
     elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
         pass
@@ -491,7 +508,7 @@ def generiraj_bin_ili_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_xili_izraz>"]:
-        pass
+        generiraj_bin_xili_izraz(instruction.children[0])
 
     elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
         pass
@@ -501,7 +518,7 @@ def generiraj_bin_xili_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_i_izraz>"]:
-        pass
+        generiraj_bin_i_izraz(instruction.children[0])
 
     elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
         pass
@@ -511,7 +528,7 @@ def generiraj_bin_i_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<jednakosni_izraz>"]:
-        pass
+        generiraj_jednakosni_izraz(instruction.children[0])
 
     elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
         pass
@@ -521,7 +538,7 @@ def generiraj_jednakosni_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<odnosni_izraz>"]:
-        pass
+        generiraj_odnosni_izraz(instruction.children[0])
 
     elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
         pass
@@ -534,7 +551,7 @@ def generiraj_odnosni_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<aditivni_izraz>"]:
-        pass
+        generiraj_aditivni_izraz(instruction.children[0])
 
     elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
         pass
@@ -553,7 +570,7 @@ def generiraj_aditivni_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<multiplikativni_izraz>"]:
-        pass
+        generiraj_multiplikativni_izraz(instruction.children[0])
 
     elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
         pass
@@ -566,7 +583,7 @@ def generiraj_multiplikativni_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<cast_izraz>"]:
-        pass
+        generiraj_cast_izraz(instruction.children[0])
 
     elif children == ["<multiplikativni izraz>", "OP_PUTA", "<cast_izraz>"]:
         pass
@@ -582,7 +599,7 @@ def generiraj_cast_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<unarni_izraz>"]:
-        pass
+        generiraj_unarni_izraz(instruction.children[0])
 
     elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
         pass 
@@ -592,7 +609,7 @@ def generiraj_unarni_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<postfiks_izraz>"]:
-        pass
+        generiraj_postfiks_izraz(instruction.children[0])
 
     elif children == ["OP_INC", "<unarni_izraz>"]:
         pass
@@ -608,7 +625,7 @@ def generiraj_postfiks_izraz(instruction):
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<primarni_izraz>"]:
-        pass
+        generiraj_primarni_izraz(instruction.children[0])
 
     elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
         pass
@@ -626,6 +643,7 @@ def generiraj_postfiks_izraz(instruction):
         pass
 
 def generiraj_primarni_izraz(instruction):
+    global constant_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -633,13 +651,56 @@ def generiraj_primarni_izraz(instruction):
         pass
 
     elif children == ["BROJ"]:
-        pass
+        item = int(instruction.children[0].lexical_unit)
+        if item not in constants:
+            constant_counter += 1
+            constants[item] = f'C_{constant_counter}'
+        label = constants[item]
+
+        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["ZNAK"]:
-        pass
+        item = ord(instruction.children[0].lexical_unit[1])
+        if item not in constants:
+            constant_counter += 1
+            constants[item] = f'C_{constant_counter}'
+        label = constants[item]
+
+        machine_code.write(f'{spaces * " "}LOAD R0, ({label})\n')
+        machine_code.write(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["NIZ_ZNAKOVA"]:
         pass
+
+    elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
+        pass
+
+def dohvati_postfiks_izraz(instruction):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+            
+    if children == ["<primarni_izraz>"]:
+        return dohvati_primarni_izraz(instruction.children[0], instruction.children[0].symbol_table)
+
+    elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
+        pass
+
+def dohvati_primarni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["IDN"]:
+        var_name = instruction.children[0].lexical_unit
+        offset = 0
+        while var_name not in scope.table:
+            offset += scope.dist
+            scope = scope.parent
+            if scope.parent is None:
+                return globals[var_name]
+        
+        offset += scope.table[var_name].dist
+        return offset
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         pass
