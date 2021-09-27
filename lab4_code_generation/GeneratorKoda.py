@@ -88,7 +88,8 @@ def generate_function(f):
             # ažuriranje okvira stoga
             p(f'{spaces * " "}MOVE R7, R5\n')
 
-    function_body.node.symbol_table.dist = dist
+            # ažuriranje veličine okvira stoga
+            function_body.node.symbol_table.dist = dist
 
     instructions = []
     body = function_body.node.children[5].children[-2]
@@ -447,15 +448,16 @@ def generiraj_slozena_naredba(instruction):
     # deklaracije
     if len(scope.table) > 0:
         for item in scope.table:
+            old_dist = dist
             dist = generate_local_variable(item, scope, dist)
+            diff = dist - old_dist
+            if diff > 0:
+                for var in scope.table:
+                    if scope.table[var].dist is not None and var != item:
+                        scope.table[var].dist += diff
 
-    for variable in scope.table:
-        scope.table[variable].dist = dist - 4 - scope.table[variable].dist
-
-    # spremanje okvira stoga
-    p(f'{spaces * " "}MOVE R7, R5\n')
-
-    scope.dist = dist
+            p(f'{spaces * " "}MOVE R7, R5\n')
+            scope.dist = dist
 
     for instruction in instructions:
         generiraj_naredba(instruction)
@@ -716,7 +718,7 @@ def dohvati_primarni_izraz(instruction, scope):
     if children == ["IDN"]:
         var_name = instruction.children[0].lexical_unit
         offset = 0
-        while var_name not in scope.table:
+        while var_name not in scope.table or scope.table[var_name].dist is None:
             offset += scope.dist
             scope = scope.parent
             if scope.parent is None:
