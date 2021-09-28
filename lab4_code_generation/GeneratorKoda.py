@@ -74,6 +74,8 @@ def generate_function(f):
     # ažuriranje okvira stoga
     p(f'{spaces * " "}MOVE R7, R5\n')
 
+    function_body.node.symbol_table.dist = dist
+
     # praćenje veličine lokalnih podataka
     old_dist = dist
 
@@ -327,7 +329,7 @@ def generate_local_variable(l, scope, dist) -> int:
                     p(f'{spaces * " "}PUSH R0\n')
 
                 else:
-                    generiraj_izraz_pridruzivanja(item)
+                    generiraj_izraz_pridruzivanja(item, scope)
 
         elif isinstance(tip, s.Char):
             brothers = item.parent.children
@@ -360,7 +362,7 @@ def generate_local_variable(l, scope, dist) -> int:
                             p(f'{spaces * " "}PUSH R0\n')
 
                         else:
-                            generiraj_izraz_pridruzivanja(item)
+                            generiraj_izraz_pridruzivanja(item, scope)
 
                     scope.table[l].dist = 0
                     dist += len(items) * 4
@@ -474,6 +476,8 @@ def generiraj_slozena_naredba(instruction, scope):
     for i in [0,1,2,3,4,5]:
         p(f'{spaces * " "}PUSH R{i}\n')
 
+    scope.dist = dist
+
     body = instruction.children[-2]
     while len(body.children) > 1:
         instructions.insert(0, body.children[1])
@@ -520,7 +524,9 @@ def generiraj_izraz(instruction, scope):
         generiraj_izraz_pridruzivanja(instruction.children[0], scope)
 
     elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
-        pass
+        generiraj_izraz(instruction.children[0], scope)
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+        generiraj_izraz_pridruzivanja(instruction.children[2], scope)
 
 def generiraj_izraz_pridruzivanja(instruction, scope):
     
