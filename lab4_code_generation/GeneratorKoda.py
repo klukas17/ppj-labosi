@@ -27,6 +27,9 @@ constants = {}
 # globalni djelokrug
 global_scope = None
 
+# global constants
+global_constants = {}
+
 # brojači
 function_counter = 0
 global_counter = 0
@@ -113,6 +116,8 @@ def generate_function(f):
 
 # funkcija generira strojni kod za danu globalnu varijablu
 def generate_global(g):
+    global global_constants
+
     p(f'{globals[g]}{(spaces-len(globals[g])) * " "}')
 
     # dohvaćanje varijable
@@ -141,15 +146,26 @@ def generate_global(g):
                     expressions = expressions[0].children
                     while isinstance(last_child, s.Node):
                         last_child = last_child.children[0]
-                    l.insert(0, last_child.lexical_unit)
+
+                    if last_child.symbol == "BROJ":
+                        l.insert(0, int(last_child.lexical_unit))
+
+                    elif last_child.symbol == "IDN":
+                        l.insert(0, last_child.lexical_unit)
                 
                 last_child = expressions[0]
                 while isinstance(last_child, s.Node):
                     last_child = last_child.children[0]
-                l.insert(0, last_child.lexical_unit)
+                if last_child.symbol == "BROJ":
+                    l.insert(0, int(last_child.lexical_unit))
+                elif last_child.symbol == "IDN":
+                    l.insert(0, last_child.lexical_unit)
 
                 for item in l:
-                    p(f'%D {item}')
+                    if isinstance(item, int):
+                        p(f'%D {item}')
+                    elif isinstance(item, str):
+                        p(f'%D {global_constants[item]}')
                     written_count += 1
                     if written_count < elem_count:
                         p(", ")
@@ -177,15 +193,18 @@ def generate_global(g):
                         expressions = expressions[0].children
                         while isinstance(last_child, s.Node):
                             last_child = last_child.children[0]
-                        l.insert(0, last_child.lexical_unit)
+                        l.insert(0, last_child)
                     
                     last_child = expressions[0]
                     while isinstance(last_child, s.Node):
                         last_child = last_child.children[0]
-                    l.insert(0, last_child.lexical_unit)
+                    l.insert(0, last_child)
 
                     for item in l:
-                        p(f'%D {ord(item[1])}')
+                        if item.symbol == "ZNAK":
+                            p(f'%D {ord(item.lexical_unit[1])}')
+                        elif item.symbol == "IDN":
+                            p(f'%D {global_constants[item.lexical_unit]}')
                         written_count += 1
                         if written_count < elem_count:
                             p(", ")
@@ -213,6 +232,8 @@ def generate_global(g):
         
         tip = item.attributes["tip"]
 
+        old_tip = tip
+
         if isinstance(tip, s.Const):
             tip = tip.primitive
 
@@ -228,7 +249,14 @@ def generate_global(g):
                 while isinstance(node, s.Node):
                     node = node.children[0]
 
-                p(f'{node.lexical_unit}\n\n')
+                if node.symbol == "BROJ":
+                    p(f'{node.lexical_unit}\n\n')
+
+                elif node.symbol == "IDN":
+                    p(f'{global_constants[node.lexical_unit]}\n\n')
+
+                if isinstance(old_tip, s.Const):
+                    global_constants[g] = int(node.lexical_unit)
 
         elif isinstance(tip, s.Char):
             p("DW %D ")
@@ -241,7 +269,14 @@ def generate_global(g):
                 while isinstance(node, s.Node):
                     node = node.children[0]
 
-                p(f'{ord(node.lexical_unit[1])}\n\n')
+                if node.symbol == "ZNAK":
+                    p(f'{ord(node.lexical_unit[1])}\n\n')
+
+                elif node.symbol == "IDN":
+                    p(f'{global_constants[node.lexical_unit]}\n\n')
+
+                if isinstance(old_tip, s.Const):
+                    global_constants[g] = ord(node.lexical_unit[1])
 
 # funkcija generira strojni kod za dane lokalne deklaracije
 def generate_local_variable(l, scope, dist) -> int:
@@ -746,6 +781,22 @@ def dohvati_primarni_izraz(instruction, scope):
         return offset
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
+        pass
+
+def generiraj_naredba_skoka(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["KR_CONTINUE", "TOCKAZAREZ"]:
+        pass
+
+    elif children == ["KR_BREAK", "TOCKAZAREZ"]:
+        pass
+
+    elif children == ["KR_RETURN", "TOCKAZAREZ"]:
+        pass
+
+    elif children == ["KR_RETURN", "<izraz>", "TOCKAZAREZ"]:
         pass
 
 if __name__ == "__main__":
