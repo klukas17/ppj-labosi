@@ -639,10 +639,22 @@ def generiraj_aditivni_izraz(instruction, scope):
         generiraj_multiplikativni_izraz(instruction.children[0], scope)
 
     elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
-        pass
+        generiraj_aditivni_izraz(instruction.children[0], scope)
+        generiraj_multiplikativni_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}ADD R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
-        pass
+        generiraj_aditivni_izraz(instruction.children[0], scope)
+        generiraj_multiplikativni_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}SUB R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_multiplikativni_izraz(instruction, scope):
 
