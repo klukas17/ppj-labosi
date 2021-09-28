@@ -668,7 +668,7 @@ def generiraj_cast_izraz(instruction, scope):
         generiraj_unarni_izraz(instruction.children[0], scope)
 
     elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
-        pass 
+        generiraj_cast_izraz(instruction.children[3], scope) 
 
 def generiraj_unarni_izraz(instruction, scope):
 
