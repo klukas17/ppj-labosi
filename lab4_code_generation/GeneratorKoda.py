@@ -34,6 +34,7 @@ global_constants = {}
 function_counter = 0
 global_counter = 0
 constant_counter = 0
+label_counter = 0
 
 # globalna varijabla za a.frisc datoteku
 machine_code = open("a.frisc", "w")
@@ -615,6 +616,7 @@ def generiraj_bin_i_izraz(instruction, scope):
         p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_jednakosni_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -622,10 +624,40 @@ def generiraj_jednakosni_izraz(instruction, scope):
         generiraj_odnosni_izraz(instruction.children[0], scope)
 
     elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
-        pass
+        generiraj_jednakosni_izraz(instruction.children[0], scope)
+        generiraj_odnosni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_EQ {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
     elif children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
-        pass
+        generiraj_jednakosni_izraz(instruction.children[0], scope)
+        generiraj_odnosni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_NE {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
 def generiraj_odnosni_izraz(instruction, scope):
 
@@ -787,7 +819,7 @@ def generiraj_primarni_izraz(instruction, scope, is_array = False):
                 p(f'{spaces * " "}PUSH R0\n')
 
             else:
-                p(f'{spaces * " "}MOVE R0, {label}\n') 
+                p(f'{spaces * " "}MOVE {label}, R0\n') 
                 p(f'{spaces * " "}PUSH R0\n')
 
             return False
@@ -849,7 +881,7 @@ def dohvati_primarni_izraz(instruction, scope):
             offset += scope.dist
             scope = scope.parent
             if scope.parent is None:
-                p(f'{spaces * " "}MOVE R0, {globals[var_name]}\n')
+                p(f'{spaces * " "}MOVE {globals[var_name]}, R0\n')
                 p(f'{spaces * " "}PUSH RO\n')
                 return False
         
