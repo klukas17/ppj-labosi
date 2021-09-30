@@ -660,6 +660,7 @@ def generiraj_jednakosni_izraz(instruction, scope):
         p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
 def generiraj_odnosni_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -667,16 +668,76 @@ def generiraj_odnosni_izraz(instruction, scope):
         generiraj_aditivni_izraz(instruction.children[0], scope)
 
     elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
-        pass
+        generiraj_odnosni_izraz(instruction.children[0], scope)
+        generiraj_aditivni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_SLT {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
     elif children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"]:
-        pass
+        generiraj_odnosni_izraz(instruction.children[0], scope)
+        generiraj_aditivni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_SGT {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
     elif children == ["<odnosni_izraz>", "OP_LTE", "<aditivni_izraz>"]:
-        pass
+        generiraj_odnosni_izraz(instruction.children[0], scope)
+        generiraj_aditivni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_SLE {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
     elif children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
-        pass
+        generiraj_odnosni_izraz(instruction.children[0], scope)
+        generiraj_aditivni_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, R1\n')
+        p(f'{spaces * " "}JP_SGE {label1}\n')
+        p(f'{spaces * " "}MOVE %D 0, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 1, R0\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
 def generiraj_aditivni_izraz(instruction, scope):
 
