@@ -537,16 +537,13 @@ def generiraj_izraz_pridruzivanja(instruction, scope):
 
     elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
         generiraj_izraz_pridruzivanja(instruction.children[2], scope)
-        offset = dohvati_postfiks_izraz(instruction.children[0])
+        is_local = dohvati_postfiks_izraz(instruction.children[0], scope)
 
+        p(f'{spaces * " "}POP R1\n')
         p(f'{spaces * " "}POP R0\n')
-
-        if isinstance(offset, str):
-            p(f'{spaces * " "}STORE R0, ({offset})\n')
-
-        elif isinstance(offset, int):
-            p(f'{spaces * " "}STORE R0, (R5 + %D {offset})\n')
-
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}STORE R0, (R1)\n')
         p(f'{spaces * " "}PUSH R0\n')
         
 def generiraj_log_ili_izraz(instruction, scope):
@@ -698,15 +695,25 @@ def generiraj_unarni_izraz(instruction, scope):
     elif children == ["<unarni_operator>", "<cast_izraz>"]:
         pass
 
-def generiraj_postfiks_izraz(instruction, scope):
+def generiraj_postfiks_izraz(instruction, scope, is_array=False):
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<primarni_izraz>"]:
-        generiraj_primarni_izraz(instruction.children[0], scope)
+        return generiraj_primarni_izraz(instruction.children[0], scope, is_array)
 
     elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
-        pass
+        is_local = generiraj_postfiks_izraz(instruction.children[0], scope, is_array=True)
+        generiraj_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}SHL R1, %D 2, R1\n')
+        p(f'{spaces * " "}ADD R0, R1, R1\n')
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}LOAD R0, (R1)\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["<postfiks_izraz>", "L_ZAGRADA", "D_ZAGRADA"]:
         pass
@@ -720,7 +727,7 @@ def generiraj_postfiks_izraz(instruction, scope):
     elif children == ["<postfiks_izraz>", "OP_DEC"]:
         pass
 
-def generiraj_primarni_izraz(instruction, scope):
+def generiraj_primarni_izraz(instruction, scope, is_array = False):
     global constant_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
@@ -739,12 +746,33 @@ def generiraj_primarni_izraz(instruction, scope):
 
         if label is None:
             offset += scope.table[var_name].dist
-            p(f'{spaces * " "}LOAD R0, (R5 + %D {offset})\n') 
-            p(f'{spaces * " "}PUSH R0\n')
+            if offset not in constants:
+                constant_counter += 1
+                constants[offset] = f'C_{constant_counter}'
+
+            if not is_array:
+                p(f'{spaces * " "}LOAD R1, ({constants[offset]})\n')
+                p(f'{spaces * " "}ADD R1, R5, R1\n')
+                p(f'{spaces * " "}LOAD R0, (R1)\n')
+                p(f'{spaces * " "}PUSH R0\n')
+
+            else:
+                p(f'{spaces * " "}LOAD R0, ({constants[offset]})\n')
+                p(f'{spaces * " "}PUSH R0\n')
+
+            return True
 
         elif offset is None:
-            p(f'{spaces * " "}LOAD R0, ({label})\n') 
-            p(f'{spaces * " "}PUSH R0\n')
+
+            if not is_array:
+                p(f'{spaces * " "}LOAD R0, ({label})\n') 
+                p(f'{spaces * " "}PUSH R0\n')
+
+            else:
+                p(f'{spaces * " "}MOVE R0, {label}\n') 
+                p(f'{spaces * " "}PUSH R0\n')
+
+            return False
 
     elif children == ["BROJ"]:
         item = int(instruction.children[0].lexical_unit)
@@ -772,17 +800,27 @@ def generiraj_primarni_izraz(instruction, scope):
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         pass
 
-def dohvati_postfiks_izraz(instruction):
+def dohvati_postfiks_izraz(instruction, scope):
 
     children = list(map(lambda n: n.symbol, instruction.children))
             
     if children == ["<primarni_izraz>"]:
-        return dohvati_primarni_izraz(instruction.children[0], instruction.children[0].symbol_table)
+        return dohvati_primarni_izraz(instruction.children[0], scope)
 
     elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
-        pass
+        is_local = dohvati_postfiks_izraz(instruction.children[0], scope)
+        generiraj_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}SHL R1, %D 2, R1\n')
+        p(f'{spaces * " "}ADD R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
+
+        return is_local
 
 def dohvati_primarni_izraz(instruction, scope):
+    global constant_counter
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -793,10 +831,19 @@ def dohvati_primarni_izraz(instruction, scope):
             offset += scope.dist
             scope = scope.parent
             if scope.parent is None:
-                return globals[var_name]
+                p(f'{spaces * " "}MOVE R0, {globals[var_name]}\n')
+                p(f'{spaces * " "}PUSH RO\n')
+                return False
         
         offset += scope.table[var_name].dist
-        return offset
+        if offset not in constants:
+            constant_counter += 1
+            constants[offset] = f'C_{constant_counter}'
+
+        p(f'{spaces * " "}LOAD R0, ({constants[offset]})\n')
+        p(f'{spaces * " "}PUSH RO\n')
+
+        return True
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         pass
