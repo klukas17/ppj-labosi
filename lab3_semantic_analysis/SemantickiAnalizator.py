@@ -451,9 +451,9 @@ def provjeri_multiplikativni_izraz(node: Node):
         node.attributes["tip"] = node.children[0].attributes["tip"] if "tip" in node.children[0].attributes else None
         node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
-    elif children == ["<multiplikativni izraz>", "OP_PUTA", "<cast_izraz>"] or \
-         children == ["<multiplikativni izraz>", "OP_DIJELI", "<cast_izraz>"] or \
-         children == ["<multiplikativni izraz>", "OP_MOD", "<cast_izraz>"]:
+    elif children == ["<multiplikativni_izraz>", "OP_PUTA", "<cast_izraz>"] or \
+         children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"] or \
+         children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
         provjeri_multiplikativni_izraz(node.children[0])
         if not check_types(node.children[0].attributes["tip"], Int()):
             print_error(node)
