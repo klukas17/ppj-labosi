@@ -574,7 +574,13 @@ def generiraj_bin_ili_izraz(instruction, scope):
         generiraj_bin_xili_izraz(instruction.children[0], scope)
 
     elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
-        pass
+        generiraj_bin_ili_izraz(instruction.children[0], scope)
+        generiraj_bin_xili_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}OR R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_bin_xili_izraz(instruction, scope):
 
@@ -584,7 +590,13 @@ def generiraj_bin_xili_izraz(instruction, scope):
         generiraj_bin_i_izraz(instruction.children[0], scope)
 
     elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
-        pass
+        generiraj_bin_xili_izraz(instruction.children[0], scope)
+        generiraj_bin_i_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}XOR R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_bin_i_izraz(instruction, scope):
 
@@ -594,7 +606,13 @@ def generiraj_bin_i_izraz(instruction, scope):
         generiraj_jednakosni_izraz(instruction.children[0], scope)
 
     elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
-        pass
+        generiraj_bin_i_izraz(instruction.children[0], scope)
+        generiraj_jednakosni_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}AND R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_jednakosni_izraz(instruction, scope):
 
@@ -913,6 +931,9 @@ if __name__ == "__main__":
     # zapis konstanti
     for c in constants:
         p(f'{constants[c]}{(spaces-len(constants[c])) * " "}DW %D {c}\n')
+
+    # zapis maski
+    p(f'\nM_1{(spaces-3) * " "}DW %B 11111111111111111111111111111111\n')
 
     # zatvaranje datoteke
     machine_code.close()
