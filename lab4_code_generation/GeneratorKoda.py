@@ -1049,7 +1049,98 @@ def generiraj_primarni_izraz(instruction, scope, is_array = False):
         pass
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
-        pass
+        generiraj_izraz(instruction.children[1], scope)
+
+def dohvati_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<izraz_pridruzivanja>"]:
+        return dohvati_izraz_pridruzivanja(instruction.children[0], scope)
+
+def dohvati_izraz_pridruzivanja(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<log_ili_izraz>"]:
+        return dohvati_log_ili_izraz(instruction.children[0], scope)
+
+def dohvati_log_ili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<log_i_izraz>"]:
+        return dohvati_log_i_izraz(instruction.children[0], scope)
+
+def dohvati_log_i_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_ili_izraz>"]:
+        return dohvati_bin_ili_izraz(instruction.children[0], scope)
+
+def dohvati_bin_ili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_xili_izraz>"]:
+        return dohvati_bin_xili_izraz(instruction.children[0], scope)
+
+def dohvati_bin_xili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_i_izraz>"]:
+        return dohvati_bin_i_izraz(instruction.children[0], scope)
+
+def dohvati_bin_i_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<jednakosni_izraz>"]:
+        return dohvati_jednakosni_izraz(instruction.children[0], scope)
+
+def dohvati_jednakosni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<odnosni_izraz>"]:
+        return dohvati_odnosni_izraz(instruction.children[0], scope)
+
+def dohvati_odnosni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<aditivni_izraz>"]:
+        return dohvati_aditivni_izraz(instruction.children[0], scope)
+
+def dohvati_aditivni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<multiplikativni_izraz>"]:
+        return dohvati_multiplikativni_izraz(instruction.children[0], scope)
+
+def dohvati_multiplikativni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<cast_izraz>"]:
+        return dohvati_cast_izraz(instruction.children[0], scope)
+
+def dohvati_cast_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<unarni_izraz>"]:
+        return dohvati_unarni_izraz(instruction.children[0], scope)
+
+def dohvati_unarni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<postfiks_izraz>"]:
+        return dohvati_postfiks_izraz(instruction.children[0], scope)
 
 def dohvati_postfiks_izraz(instruction, scope):
 
@@ -1097,7 +1188,7 @@ def dohvati_primarni_izraz(instruction, scope):
         return True
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
-        pass
+        return dohvati_izraz(instruction.children[1], scope)
 
 def generiraj_naredba_skoka(instruction, scope):
     
