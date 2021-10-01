@@ -765,20 +765,108 @@ def generiraj_aditivni_izraz(instruction, scope):
         p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_multiplikativni_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<cast_izraz>"]:
         generiraj_cast_izraz(instruction.children[0], scope)
 
-    elif children == ["<multiplikativni izraz>", "OP_PUTA", "<cast_izraz>"]:
-        pass
+    elif children == ["<multiplikativni_izraz>", "OP_PUTA", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction.children[0], scope)
+        generiraj_cast_izraz(instruction.children[2], scope)
 
-    elif children == ["<multiplikativni izraz>", "OP_DIJELI", "<cast_izraz>"]:
-        pass
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+        label_counter += 1
+        label3 = f'L_{label_counter}'
+        label_counter += 1
+        label4 = f'L_{label_counter}'
+        label_counter += 1
+        label5 = f'L_{label_counter}'
 
-    elif children == ["<multiplikativni izraz>", "OP_MOD", "<cast_izraz>"]:
-        pass
+        p(f'{spaces * " "}POP R2\n')
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}MOVE %D 0, R3\n')
+        p(f'{spaces * " "}LOAD R4, (M_1)\n')
+        p(f'{spaces * " "}CMP R1, %D 0\n')
+        p(f'{spaces * " "}JP_SGE {label1}\n')
+        p(f'{spaces * " "}XOR R1, R4, R1\n')
+        p(f'{spaces * " "}ADD R3, %D 1, R3\n')
+        p(f'{label1}{(spaces - len(label1))* " "}CMP R2, %D 0\n')
+        p(f'{spaces * " "}JP_SGE {label2}\n')
+        p(f'{spaces * " "}XOR R2, R4, R2\n')
+        p(f'{spaces * " "}ADD R3, %D 1, R3\n')
+        p(f'{label2}{(spaces - len(label2))* " "}MOVE %D 0, R0\n')
+        p(f'{label3}{(spaces - len(label3)) * " "}CMP R2, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label4}\n')
+        p(f'{spaces * " "}SUB R2, %D 1, R2\n')
+        p(f'{spaces * " "}ADD R0, R1, R0\n')
+        p(f'{spaces * " "}JP {label3}\n')
+        p(f'{label4}{(spaces - len(label4)) * " "}AND R3, %D 1, R3\n')
+        p(f'{spaces * " "}CMP R3, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label5}\n')
+        p(f'{spaces * " "}XOR R0, R4, R0\n')
+        p(f'{label5}{(spaces - len(label5)) * " "}PUSH R0\n')
+
+    elif children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction.children[0], scope)
+        generiraj_cast_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+        label_counter += 1
+        label3 = f'L_{label_counter}'
+        label_counter += 1
+        label4 = f'L_{label_counter}'
+        label_counter += 1
+        label5 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R2\n')
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}MOVE %D 0, R3\n')
+        p(f'{spaces * " "}LOAD R4, (M_1)\n')
+        p(f'{spaces * " "}CMP R1, %D 0\n')
+        p(f'{spaces * " "}JP_SGE {label1}\n')
+        p(f'{spaces * " "}XOR R1, R4, R1\n')
+        p(f'{spaces * " "}ADD R3, %D 1, R3\n')
+        p(f'{label1}{(spaces - len(label1))* " "}CMP R2, %D 0\n')
+        p(f'{spaces * " "}JP_SGE {label2}\n')
+        p(f'{spaces * " "}XOR R2, R4, R2\n')
+        p(f'{spaces * " "}ADD R3, %D 1, R3\n')
+        p(f'{label2}{(spaces - len(label2))* " "}MOVE %D 0, R0\n')
+        p(f'{label3}{(spaces - len(label3)) * " "}CMP R1, R2\n')
+        p(f'{spaces * " "}JP_SLT {label4}\n')
+        p(f'{spaces * " "}SUB R1, R2, R1\n')
+        p(f'{spaces * " "}ADD R0, %D 1, R0\n')
+        p(f'{spaces * " "}JP {label3}\n')
+        p(f'{label4}{(spaces - len(label4)) * " "}AND R3, %D 1, R3\n')
+        p(f'{spaces * " "}CMP R3, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label5}\n')
+        p(f'{spaces * " "}XOR R0, R4, R0\n')
+        p(f'{label5}{(spaces - len(label5)) * " "}PUSH R0\n')
+
+    elif children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction.children[0], scope)
+        generiraj_cast_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R2\n')
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}CMP R1, R2\n')
+        p(f'{spaces * " "}JP_SLT {label2}\n')
+        p(f'{spaces * " "}SUB R1, R2, R1\n')
+        p(f'{spaces * " "}JP {label1}\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}MOVE R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_cast_izraz(instruction, scope):
 
