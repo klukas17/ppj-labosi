@@ -548,6 +548,7 @@ def generiraj_izraz_pridruzivanja(instruction, scope):
         p(f'{spaces * " "}PUSH R0\n')
         
 def generiraj_log_ili_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -555,9 +556,35 @@ def generiraj_log_ili_izraz(instruction, scope):
         generiraj_log_i_izraz(instruction.children[0], scope)
 
     elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
-        pass
+        generiraj_log_ili_izraz(instruction.children[0], scope)
+        generiraj_log_i_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+        label_counter += 1
+        label3 = f'L_{label_counter}'
+        label_counter += 1
+        label4 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label1}\n')
+        p(f'{spaces * " "}MOVE %D 1, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 0, R0\n')
+        p(f'{label2}{(spaces - len(label2))* " "}CMP R1, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label3}\n')
+        p(f'{spaces * " "}MOVE %D 1, R1\n')
+        p(f'{spaces * " "}JP {label4}\n')
+        p(f'{label3}{(spaces - len(label3)) * " "}MOVE %D 0, R1\n')
+        p(f'{label4}{(spaces - len(label4)) * " "}OR R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_log_i_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -565,7 +592,32 @@ def generiraj_log_i_izraz(instruction, scope):
         generiraj_bin_ili_izraz(instruction.children[0], scope)
 
     elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
-        pass
+        generiraj_log_i_izraz(instruction.children[0], scope)
+        generiraj_bin_ili_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+        label_counter += 1
+        label3 = f'L_{label_counter}'
+        label_counter += 1
+        label4 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label1}\n')
+        p(f'{spaces * " "}MOVE %D 1, R0\n')
+        p(f'{spaces * " "}JP {label2}\n')
+        p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 0, R0\n')
+        p(f'{label2}{(spaces - len(label2))* " "}CMP R1, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label3}\n')
+        p(f'{spaces * " "}MOVE %D 1, R1\n')
+        p(f'{spaces * " "}JP {label4}\n')
+        p(f'{label3}{(spaces - len(label3)) * " "}MOVE %D 0, R1\n')
+        p(f'{label4}{(spaces - len(label4)) * " "}AND R0, R1, R0\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
 def generiraj_bin_ili_izraz(instruction, scope):
 
