@@ -550,6 +550,8 @@ def generiraj_izraz_pridruzivanja(instruction, scope):
 def generiraj_log_ili_izraz(instruction, scope):
     global label_counter
 
+    # TODO short-circuiting
+
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<log_i_izraz>"]:
@@ -585,6 +587,8 @@ def generiraj_log_ili_izraz(instruction, scope):
 
 def generiraj_log_i_izraz(instruction, scope):
     global label_counter
+
+    # TODO short-circuiting
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -938,10 +942,28 @@ def generiraj_unarni_izraz(instruction, scope):
         generiraj_postfiks_izraz(instruction.children[0], scope)
 
     elif children == ["OP_INC", "<unarni_izraz>"]:
-        pass
+        generiraj_unarni_izraz(instruction.children[1], scope)
+        is_local = generiraj_unarni_izraz(instruction.children[1], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}ADD R0, %D 1, R0\n')
+        p(f'{spaces * " "}STORE R0, (R1)\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["OP_DEC", "<unarni_izraz>"]:
-        pass
+        generiraj_unarni_izraz(instruction.children[1], scope)
+        is_local = generiraj_unarni_izraz(instruction.children[1], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}SUB R0, %D 1, R0\n')
+        p(f'{spaces * " "}STORE R0, (R1)\n')
+        p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["<unarni_operator>", "<cast_izraz>"]:
         pass
@@ -973,10 +995,30 @@ def generiraj_postfiks_izraz(instruction, scope, is_array=False):
         pass
 
     elif children == ["<postfiks_izraz>", "OP_INC"]:
-        pass
+        generiraj_postfiks_izraz(instruction.children[0], scope)
+        is_local = dohvati_postfiks_izraz(instruction.children[0], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}MOVE R0, R2\n')
+        p(f'{spaces * " "}ADD R0, %D 1, R0\n')
+        p(f'{spaces * " "}STORE R0, (R1)\n')
+        p(f'{spaces * " "}PUSH R2\n')
 
     elif children == ["<postfiks_izraz>", "OP_DEC"]:
-        pass
+        generiraj_postfiks_izraz(instruction.children[0], scope)
+        is_local = dohvati_postfiks_izraz(instruction.children[0], scope)
+
+        p(f'{spaces * " "}POP R1\n')
+        p(f'{spaces * " "}POP R0\n')
+        if is_local:
+            p(f'{spaces * " "}ADD R1, R5, R1\n')
+        p(f'{spaces * " "}MOVE R0, R2\n')
+        p(f'{spaces * " "}SUB R0, %D 1, R0\n')
+        p(f'{spaces * " "}STORE R0, (R1)\n')
+        p(f'{spaces * " "}PUSH R2\n')
 
 def generiraj_primarni_izraz(instruction, scope, is_array = False):
     global constant_counter
@@ -1045,11 +1087,11 @@ def generiraj_primarni_izraz(instruction, scope, is_array = False):
         p(f'{spaces * " "}LOAD R0, ({label})\n')
         p(f'{spaces * " "}PUSH R0\n')
 
-    elif children == ["NIZ_ZNAKOVA"]:
-        pass
-
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         generiraj_izraz(instruction.children[1], scope)
+
+    # ne bi trebalo biti moguće
+    """ elif children == ["NIZ_ZNAKOVA"]: """
 
 def dohvati_izraz(instruction, scope):
     
@@ -1261,3 +1303,14 @@ if __name__ == "__main__":
 
     # zatvaranje datoteke
     machine_code.close()
+
+    '''
+        TODO:
+            prefiks i postfiks operatori
+            <unarni_operator>, <cast_izraz>
+            short circuiting &&, ||
+            <naredba_grananja>
+            <naredba_petlje>
+            <naredba_skoka>
+            pozivanje funkcija, return izrazi - ovdje paziti na polja kao parametre funkcija
+    '''
