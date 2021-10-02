@@ -850,10 +850,12 @@ def generiraj_multiplikativni_izraz(instruction, scope):
         p(f'{spaces * " "}CMP R1, %D 0\n')
         p(f'{spaces * " "}JP_SGE {label1}\n')
         p(f'{spaces * " "}XOR R1, R4, R1\n')
+        p(f'{spaces * " "}ADD R1, %D 1, R1\n')
         p(f'{spaces * " "}ADD R3, %D 1, R3\n')
         p(f'{label1}{(spaces - len(label1))* " "}CMP R2, %D 0\n')
         p(f'{spaces * " "}JP_SGE {label2}\n')
         p(f'{spaces * " "}XOR R2, R4, R2\n')
+        p(f'{spaces * " "}ADD R2, %D 1, R2\n')
         p(f'{spaces * " "}ADD R3, %D 1, R3\n')
         p(f'{label2}{(spaces - len(label2))* " "}MOVE %D 0, R0\n')
         p(f'{label3}{(spaces - len(label3)) * " "}CMP R2, %D 0\n')
@@ -865,6 +867,7 @@ def generiraj_multiplikativni_izraz(instruction, scope):
         p(f'{spaces * " "}CMP R3, %D 0\n')
         p(f'{spaces * " "}JP_EQ {label5}\n')
         p(f'{spaces * " "}XOR R0, R4, R0\n')
+        p(f'{spaces * " "}ADD R0, %D 1, R0\n')
         p(f'{label5}{(spaces - len(label5)) * " "}PUSH R0\n')
 
     elif children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"]:
@@ -889,10 +892,12 @@ def generiraj_multiplikativni_izraz(instruction, scope):
         p(f'{spaces * " "}CMP R1, %D 0\n')
         p(f'{spaces * " "}JP_SGE {label1}\n')
         p(f'{spaces * " "}XOR R1, R4, R1\n')
+        p(f'{spaces * " "}ADD R1, %D 1, R1\n')
         p(f'{spaces * " "}ADD R3, %D 1, R3\n')
         p(f'{label1}{(spaces - len(label1))* " "}CMP R2, %D 0\n')
         p(f'{spaces * " "}JP_SGE {label2}\n')
         p(f'{spaces * " "}XOR R2, R4, R2\n')
+        p(f'{spaces * " "}ADD R2, %D 1, R2\n')
         p(f'{spaces * " "}ADD R3, %D 1, R3\n')
         p(f'{label2}{(spaces - len(label2))* " "}MOVE %D 0, R0\n')
         p(f'{label3}{(spaces - len(label3)) * " "}CMP R1, R2\n')
@@ -904,6 +909,7 @@ def generiraj_multiplikativni_izraz(instruction, scope):
         p(f'{spaces * " "}CMP R3, %D 0\n')
         p(f'{spaces * " "}JP_EQ {label5}\n')
         p(f'{spaces * " "}XOR R0, R4, R0\n')
+        p(f'{spaces * " "}ADD R0, %D 1, R0\n')
         p(f'{label5}{(spaces - len(label5)) * " "}PUSH R0\n')
 
     elif children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
@@ -935,6 +941,7 @@ def generiraj_cast_izraz(instruction, scope):
         generiraj_cast_izraz(instruction.children[3], scope) 
 
 def generiraj_unarni_izraz(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -966,7 +973,37 @@ def generiraj_unarni_izraz(instruction, scope):
         p(f'{spaces * " "}PUSH R0\n')
 
     elif children == ["<unarni_operator>", "<cast_izraz>"]:
-        pass
+        generiraj_cast_izraz(instruction.children[1], scope)
+        operator = instruction.children[0].children[0].symbol
+
+        p(f'{spaces * " "}POP R0\n')
+
+        if operator == "PLUS":
+            p(f'{spaces * " "}PUSH R0\n')
+
+        elif operator == "MINUS":
+            p(f'{spaces * " "}LOAD R1, (M_1)\n')
+            p(f'{spaces * " "}X0R R0, R1, R0\n')
+            p(f'{spaces * " "}ADD R0, %D 1, R0\n')
+            p(f'{spaces * " "}PUSH R0\n')
+
+        elif operator == "OP_TILDA":
+            p(f'{spaces * " "}LOAD R1, (M_1)\n')
+            p(f'{spaces * " "}X0R R0, R1, R0\n')
+            p(f'{spaces * " "}PUSH R0\n')
+
+        elif operator == "OP_NEG":
+            label_counter += 1
+            label1 = f'L_{label_counter}'
+            label_counter += 1
+            label2 = f'L_{label_counter}'
+
+            p(f'{spaces * " "}CMP R0, %D 0\n')
+            p(f'{spaces * " "}JP_NE {label1}\n')
+            p(f'{spaces * " "}MOVE %D 1, R0\n')
+            p(f'{spaces * " "}JP {label2}\n')
+            p(f'{label1}{(spaces - len(label1)) * " "}MOVE %D 0, R0\n')
+            p(f'{label2}{(spaces - len(label2)) * " "}PUSH R0\n')
 
 def generiraj_postfiks_izraz(instruction, scope, is_array=False):
 
@@ -1306,7 +1343,6 @@ if __name__ == "__main__":
 
     '''
         TODO:
-            prefiks i postfiks operatori
             <unarni_operator>, <cast_izraz>
             short circuiting &&, ||
             <naredba_grananja>
