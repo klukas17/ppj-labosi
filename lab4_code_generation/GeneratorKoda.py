@@ -1301,17 +1301,84 @@ def dohvati_primarni_izraz(instruction, scope):
         return dohvati_izraz(instruction.children[1], scope)
 
 def generiraj_naredba_petlje(instruction, scope):
+    global label_counter
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["KR_WHILE", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
-        pass
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
+
+        generiraj_izraz(instruction.children[2], scope)
+
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label2}\n')
+
+        generiraj_naredba(instruction.children[4], scope)
+
+        p(f'{spaces * " "}JP {label1}\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
+
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
-        pass
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        generiraj_izraz_naredba(instruction.children[2], scope)
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+
+        p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
+
+        generiraj_izraz_naredba(instruction.children[3], scope)
+
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label2}\n')
+
+        generiraj_naredba(instruction.children[5], scope)
+
+        p(f'{spaces * " "}JP {label1}\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
+
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
-        pass
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        generiraj_izraz_naredba(instruction.children[2], scope)
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+
+        p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
+
+        generiraj_izraz_naredba(instruction.children[3], scope)
+
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label2}\n')
+
+        generiraj_naredba(instruction.children[6], scope)
+        generiraj_izraz(instruction.children[4], scope)
+
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+
+        p(f'{spaces * " "}JP {label1}\n')
+        p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
+
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
 
 def generiraj_naredba_skoka(instruction, scope):
     
