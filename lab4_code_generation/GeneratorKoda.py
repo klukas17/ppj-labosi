@@ -110,12 +110,21 @@ def generate_function(f):
     if old_dist != dist:
         p(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
 
-    # obnova konteksta
-    for i in [5,4,3,2,1,0]:
-        p(f'{spaces * " "}POP R{i}\n')
+    # provjera je li zadnja naredba u funkciji naredba return
+    last_instruction = instructions[-1]
+    flag = False
+    if last_instruction.children[0].symbol == "<naredba_skoka>" and \
+       last_instruction.children[0].children[0].symbol == "KR_RETURN":
+        flag = True
 
     # povratak iz funkcije
-    p(f'{spaces * " "}RET\n\n')
+    if not flag:
+
+        # obnova konteksta
+        for i in [5,4,3,2,1,0]:
+            p(f'{spaces * " "}POP R{i}\n')
+
+        p(f'{spaces * " "}RET\n\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
 def generate_global(g):
@@ -286,6 +295,10 @@ def generate_local_variable(l, scope, dist) -> int:
     global constant_counter
     
     item = scope.table[l].node
+
+    # deklaracija funkcije
+    if isinstance(item, s.Function):
+        return 0
 
     # polje
     if isinstance(item.attributes["tip"], s.Array):
@@ -1406,10 +1419,16 @@ def generiraj_naredba_skoka(instruction, scope):
         p(f'{spaces * " "}JP {curr_instruction.attributes["end_label"]}\n')
 
     elif children == ["KR_RETURN", "TOCKAZAREZ"]:
-        pass
+        for i in [5,4,3,2,1,0]:
+            p(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}RET\n')
 
     elif children == ["KR_RETURN", "<izraz>", "TOCKAZAREZ"]:
-        pass
+        generiraj_izraz(instruction.children[1], scope)
+        p(f'{spaces * " "}POP R6\n')
+        for i in [5,4,3,2,1,0]:
+            p(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}RET\n')
 
 if __name__ == "__main__":
     
@@ -1469,5 +1488,5 @@ if __name__ == "__main__":
 
     '''
         TODO:
-            pozivanje funkcija, return izrazi - ovdje paziti na polja kao parametre funkcija
+            pozivanje funkcija - ovdje paziti na polja kao parametre funkcija
     '''
