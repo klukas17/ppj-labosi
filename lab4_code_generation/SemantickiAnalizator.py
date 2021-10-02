@@ -829,7 +829,7 @@ def provjeri_naredba_petlje(node: Node):
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
         provjeri_izraz_naredba(node.children[2])
-        provjeri_izraz_naredba[node.children[3]]
+        provjeri_izraz_naredba(node.children[3])
         if not check_types(node.children[3].attributes["tip"], Int()):
             print_error(node)
         provjeri_naredba(node.children[5])
