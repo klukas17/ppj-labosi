@@ -1311,6 +1311,9 @@ def generiraj_naredba_petlje(instruction, scope):
         label_counter += 1
         label2 = f'L_{label_counter}'
 
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
+
         p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
 
         generiraj_izraz(instruction.children[2], scope)
@@ -1324,14 +1327,14 @@ def generiraj_naredba_petlje(instruction, scope):
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
 
-        instruction.attributes["start_label"] = label1
-        instruction.attributes["end_label"] = label2
-
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
         label_counter += 1
         label1 = f'L_{label_counter}'
         label_counter += 1
         label2 = f'L_{label_counter}'
+
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
 
         generiraj_izraz_naredba(instruction.children[2], scope)
         p(f'{spaces * " "}ADD R7, %D 4, R7\n')
@@ -1349,14 +1352,14 @@ def generiraj_naredba_petlje(instruction, scope):
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
 
-        instruction.attributes["start_label"] = label1
-        instruction.attributes["end_label"] = label2
-
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         label_counter += 1
         label1 = f'L_{label_counter}'
         label_counter += 1
         label2 = f'L_{label_counter}'
+
+        instruction.attributes["start_label"] = label1
+        instruction.attributes["end_label"] = label2
 
         generiraj_izraz_naredba(instruction.children[2], scope)
         p(f'{spaces * " "}ADD R7, %D 4, R7\n')
@@ -1377,18 +1380,30 @@ def generiraj_naredba_petlje(instruction, scope):
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
 
-        instruction.attributes["start_label"] = label1
-        instruction.attributes["end_label"] = label2
-
 def generiraj_naredba_skoka(instruction, scope):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["KR_CONTINUE", "TOCKAZAREZ"]:
-        pass
+        curr_instruction = instruction
+        while curr_instruction.symbol != "<naredba_petlje>":
+            curr_instruction = curr_instruction.parent
+
+        p(f'{spaces * " "}JP {curr_instruction.attributes["start_label"]}\n')
 
     elif children == ["KR_BREAK", "TOCKAZAREZ"]:
-        pass
+        curr_instruction = instruction
+        nested_scopes_count = 0
+        while curr_instruction.symbol != "<naredba_petlje>":
+            if curr_instruction.symbol == "<slozena_naredba>":
+                nested_scopes_count += 1
+            curr_instruction = curr_instruction.parent
+
+        for _ in range(nested_scopes_count):
+            for i in [5,4,3,2,1,0]:
+                p(f'{spaces * " "}POP R{i}\n')
+
+        p(f'{spaces * " "}JP {curr_instruction.attributes["end_label"]}\n')
 
     elif children == ["KR_RETURN", "TOCKAZAREZ"]:
         pass
@@ -1454,7 +1469,5 @@ if __name__ == "__main__":
 
     '''
         TODO:
-            <naredba_petlje>
-            <naredba_skoka>
             pozivanje funkcija, return izrazi - ovdje paziti na polja kao parametre funkcija
     '''
