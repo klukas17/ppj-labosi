@@ -458,13 +458,13 @@ def generiraj_naredba(instruction, scope):
         p(f'{spaces * " "}ADD R7, %D 4, R7\n')
     
     elif children == ["<naredba_grananja>"]:
-        pass
+        generiraj_naredba_grananja(instruction.children[0], scope)
 
     elif children == ["<naredba_petlje>"]:
-        pass
+        generiraj_naredba_petlje(instruction.children[0], scope)
 
     elif children == ["<naredba_skoka>"]:
-        pass
+        generiraj_naredba_skoka(instruction.children[0], scope)
 
 def generiraj_slozena_naredba(instruction, scope):
 
@@ -509,6 +509,47 @@ def generiraj_slozena_naredba(instruction, scope):
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
         p(f'{spaces * " "}POP R{i}\n')
+
+def generiraj_naredba_grananja(instruction, scope):
+    global label_counter
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["KR_IF", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
+        generiraj_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label1}\n')
+        
+        generiraj_naredba(instruction.children[4], scope)
+
+        p(f'{label1}{(spaces - len(label1))  * " "}ADD R0, %D 0, R0\n')
+
+    elif children == ["KR_IF", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>", "KR_ELSE", "<naredba>"]:
+        generiraj_izraz(instruction.children[2], scope)
+
+        label_counter += 1
+        label1 = f'L_{label_counter}'
+        label_counter += 1
+        label2 = f'L_{label_counter}'
+
+        p(f'{spaces * " "}POP R0\n')
+        p(f'{spaces * " "}CMP R0, %D 0\n')
+        p(f'{spaces * " "}JP_EQ {label1}\n')
+
+        generiraj_naredba(instruction.children[4], scope)
+
+        p(f'{spaces * " "}JP {label2}\n')
+
+        p(f'{label1}{(spaces - len(label1))  * " "}ADD R0, %D 0, R0\n')
+        
+        generiraj_naredba(instruction.children[6], scope)
+        
+        p(f'{label2}{(spaces - len(label2))  * " "}ADD R0, %D 0, R0\n')
 
 def generiraj_izraz_naredba(instruction, scope):
     
@@ -1259,6 +1300,19 @@ def dohvati_primarni_izraz(instruction, scope):
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         return dohvati_izraz(instruction.children[1], scope)
 
+def generiraj_naredba_petlje(instruction, scope):
+
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["KR_WHILE", "L_ZAGRADA", "<izraz>", "D_ZAGRADA", "<naredba>"]:
+        pass
+
+    elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
+        pass
+
+    elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
+        pass
+
 def generiraj_naredba_skoka(instruction, scope):
     
     children = list(map(lambda n: n.symbol, instruction.children))
@@ -1333,8 +1387,6 @@ if __name__ == "__main__":
 
     '''
         TODO:
-            short circuiting &&, ||
-            <naredba_grananja>
             <naredba_petlje>
             <naredba_skoka>
             pozivanje funkcija, return izrazi - ovdje paziti na polja kao parametre funkcija
