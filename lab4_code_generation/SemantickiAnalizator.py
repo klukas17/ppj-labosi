@@ -961,7 +961,7 @@ def provjeri_definicija_funkcije(node: Node):
         if new_funct_name in function_definitions:
             print_error(node)
         provjeri_lista_parametara(node.children[3])
-        if new_funct_name in node.symbol_table.table:
+        if new_funct_name in node.symbol_table.table and isinstance(node.symbol_table.table[new_funct_name], Function):
             existing_function = node.symbol_table.table[new_funct_name]
             if type(node.children[0].attributes["tip"]) != type(existing_function.ret_val):
                 print_error(node)
