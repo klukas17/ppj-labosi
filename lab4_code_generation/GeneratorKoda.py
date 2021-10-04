@@ -92,7 +92,7 @@ def generate_function(f):
     for l in function_body.node.symbol_table.table:
         if function_body.node.symbol_table.table[l].dist is None:
             dist_before = dist
-            dist = generate_local_variable(l, function_body.node.symbol_table, dist)
+            dist = generate_local_variable(l, function_body.node.symbol_table, dist, function_arguments)
             diff = dist - dist_before
             if diff > 0:
                 for param in function_body.node.symbol_table.table:
@@ -299,14 +299,14 @@ def generate_global(g):
                     global_constants[g] = ord(node.lexical_unit[1])
 
 # funkcija generira strojni kod za dane lokalne deklaracije
-def generate_local_variable(l, scope, dist) -> int:
+def generate_local_variable(l, scope, dist, function_arguments) -> int:
     global constant_counter
     
     item = scope.table[l].node
 
     # deklaracija funkcije
     if isinstance(item, s.Function):
-        return 0
+        return dist
 
     # polje
     if isinstance(item.attributes["tip"], s.Array):
@@ -458,7 +458,7 @@ def generate_local_variable(l, scope, dist) -> int:
 
         elif len(item.parent.children) == 3:
 
-            generiraj_izraz_pridruzivanja(item.parent.children[2].children[0], scope)
+            generiraj_izraz_pridruzivanja(item.parent.children[2].children[0], scope, function_arguments)
 
             # na stogu se sada nalazi ta varijabla s vrijednošću i nije ju potrebno mijenjati
 
@@ -510,7 +510,7 @@ def generiraj_slozena_naredba(instruction, scope, function_arguments):
     if len(scope.table) > 0:
         for item in scope.table:
             old_dist = dist
-            dist = generate_local_variable(item, scope, dist)
+            dist = generate_local_variable(item, scope, dist, function_arguments)
             diff = dist - old_dist
             if diff > 0:
                 for var in scope.table:
@@ -1000,11 +1000,11 @@ def generiraj_unarni_izraz(instruction, scope, function_arguments):
 
     elif children == ["OP_INC", "<unarni_izraz>"]:
         generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
-        is_local = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
+        scope = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
 
         p(f'{spaces * " "}POP R1\n')
         p(f'{spaces * " "}POP R0\n')
-        if is_local:
+        if scope == Type.LOCAL:
             p(f'{spaces * " "}ADD R1, R5, R1\n')
         p(f'{spaces * " "}ADD R0, %D 1, R0\n')
         p(f'{spaces * " "}STORE R0, (R1)\n')
@@ -1012,11 +1012,11 @@ def generiraj_unarni_izraz(instruction, scope, function_arguments):
 
     elif children == ["OP_DEC", "<unarni_izraz>"]:
         generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
-        is_local = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
+        scope = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
 
         p(f'{spaces * " "}POP R1\n')
         p(f'{spaces * " "}POP R0\n')
-        if is_local:
+        if scope == Type.LOCAL:
             p(f'{spaces * " "}ADD R1, R5, R1\n')
         p(f'{spaces * " "}SUB R0, %D 1, R0\n')
         p(f'{spaces * " "}STORE R0, (R1)\n')
@@ -1495,7 +1495,7 @@ def generiraj_argument_log_i_izraz(instruction, scope, function_arguments):
     if children == ["<bin_ili_izraz>"]:
         generiraj_argument_bin_ili_izraz(instruction.children[0], scope, function_arguments)
 
-def generiraj_argument_bin_ili_izraz(instruction, scop, function_arguments):
+def generiraj_argument_bin_ili_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
@@ -1587,7 +1587,7 @@ def generiraj_argument_primarni_izraz(instruction, scope, function_arguments):
                 constant_counter += 1
                 constants[offset] = f'C_{constant_counter}'
 
-            if not isinstance(instruction.attributes["tip"], s.Array):
+            if not isinstance(instruction.attributes["tip"], s.Array) or var_name in function_arguments:
                 p(f'{spaces * " "}LOAD R1, ({constants[offset]})\n')
                 p(f'{spaces * " "}ADD R1, R5, R1\n')
                 p(f'{spaces * " "}LOAD R0, (R1)\n')
