@@ -115,9 +115,6 @@ def generate_function(f):
     for instruction in instructions:
         generiraj_naredba(instruction, function_body.node.symbol_table, function_arguments)
 
-    if old_dist != dist:
-        p(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
-
     # provjera je li zadnja naredba u funkciji naredba return
     last_instruction = instructions[-1]
     flag = False
@@ -128,11 +125,18 @@ def generate_function(f):
     # povratak iz funkcije
     if not flag:
 
+        # micanje lokalnih varijabli sa stoga
+        if old_dist != dist:
+            p(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
+
         # obnova konteksta
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
 
         p(f'{spaces * " "}RET\n\n')
+
+    else:
+        p('\n')
 
 # funkcija generira strojni kod za danu globalnu varijablu
 def generate_global(g):
@@ -351,7 +355,7 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
                     p(f'{spaces * " "}PUSH R0\n')
 
                 else:
-                    generiraj_izraz_pridruzivanja(item, scope)
+                    generiraj_izraz_pridruzivanja(item, scope, function_arguments)
 
         elif isinstance(tip, s.Char):
             brothers = item.parent.children
@@ -384,7 +388,7 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
                             p(f'{spaces * " "}PUSH R0\n')
 
                         else:
-                            generiraj_izraz_pridruzivanja(item, scope)
+                            generiraj_izraz_pridruzivanja(item, scope, function_arguments)
 
                     scope.table[l].dist = 0
                     dist += len(items) * 4
@@ -587,7 +591,7 @@ def generiraj_izraz(instruction, scope, function_arguments):
         generiraj_izraz_pridruzivanja(instruction.children[0], scope, function_arguments)
 
     elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
-        generiraj_izraz(instruction.children[0], scope)
+        generiraj_izraz(instruction.children[0], scope, function_arguments)
         p(f'{spaces * " "}ADD R7, %D 4, R7\n')
         generiraj_izraz_pridruzivanja(instruction.children[2], scope, function_arguments)
 
@@ -1456,15 +1460,38 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
         p(f'{spaces * " "}JP {curr_instruction.attributes["end_label"]}\n')
 
     elif children == ["KR_RETURN", "TOCKAZAREZ"]:
+        curr_dist = 0
+        scope = instruction.symbol_table
+        while scope.parent.parent is not None:
+            curr_dist += scope.dist
+            scope = scope.parent
+        curr_dist += scope.dist
+
+        if curr_dist > (28 + 4 * len(function_arguments)):
+            p(f'{spaces * " "}ADD R7, %D {curr_dist - (28 + 4 * len(function_arguments))}, R7\n')
+
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
+
         p(f'{spaces * " "}RET\n')
 
     elif children == ["KR_RETURN", "<izraz>", "TOCKAZAREZ"]:
         generiraj_izraz(instruction.children[1], scope, function_arguments)
         p(f'{spaces * " "}POP R6\n')
+
+        curr_dist = 0
+        scope = instruction.symbol_table
+        while scope.parent.parent is not None:
+            curr_dist += scope.dist
+            scope = scope.parent
+        curr_dist += scope.dist
+
+        if curr_dist > (28 + 4 * len(function_arguments)):
+            p(f'{spaces * " "}ADD R7, %D {curr_dist - (28 + 4 * len(function_arguments))}, R7\n')
+
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
+
         p(f'{spaces * " "}RET\n')
 
 def generiraj_argument_izraz(instruction, scope, function_arguments):
