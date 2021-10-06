@@ -75,13 +75,11 @@ def generate_function(f):
     dist += 24
     for i in [0,1,2,3,4,5]:
         p(f'{spaces * " "}PUSH R{i}\n')
+    p(f'{spaces * " "}MOVE R7, R5\n')
 
     for param in function_body.node.symbol_table.table:
         if function_body.node.symbol_table.table[param].dist is not None:
             function_body.node.symbol_table.table[param].dist += 28
-
-    # ažuriranje okvira stoga
-    p(f'{spaces * " "}MOVE R7, R5\n')
 
     function_body.node.symbol_table.dist = dist
 
@@ -128,10 +126,12 @@ def generate_function(f):
         # micanje lokalnih varijabli sa stoga
         if old_dist != dist:
             p(f'{spaces * " "}ADD R7, %D {dist-old_dist}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
 
         # obnova konteksta
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
         p(f'{spaces * " "}RET\n\n')
 
@@ -501,6 +501,7 @@ def generiraj_slozena_naredba(instruction, scope, function_arguments):
     dist += 24
     for i in [0,1,2,3,4,5]:
         p(f'{spaces * " "}PUSH R{i}\n')
+    p(f'{spaces * " "}MOVE R7, R5\n')
 
     scope.dist = dist
 
@@ -530,10 +531,12 @@ def generiraj_slozena_naredba(instruction, scope, function_arguments):
     # micanje lokalnih varijabli sa stoga
     if len(scope.table) > 0:
         p(f'{spaces * " "}ADD R7, %D {scope.dist-24}, R7\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
     # obnova konteksta
     for i in [5,4,3,2,1,0]:
         p(f'{spaces * " "}POP R{i}\n')
+    p(f'{spaces * " "}MOVE R7, R5\n')
 
 def generiraj_naredba_grananja(instruction, scope, function_arguments):
     global label_counter
@@ -1102,6 +1105,7 @@ def generiraj_postfiks_izraz(instruction, scope, function_arguments, is_array=Fa
 
         p(f'{spaces * " "}CALL {function_label}\n')
         p(f'{spaces * " "}ADD R7, %D {4 * len(args)}, R7\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
         p(f'{spaces * " "}PUSH R6\n')
 
     elif children == ["<postfiks_izraz>", "OP_INC"]:
@@ -1381,6 +1385,17 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
 
+        instruction_block = instruction.children[4].children[0]
+
+        if instruction_block.symbol == "<slozena_naredba>":
+            instruction_block_scope = instruction_block.symbol_table
+            if instruction_block_scope.dist > 24:
+                p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
+            for i in [5,4,3,2,1,0]:
+                p(f'{spaces * " "}POP R{i}\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
+
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
         label_counter += 1
         label1 = f'L_{label_counter}'
@@ -1405,6 +1420,17 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
 
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
+
+        instruction_block = instruction.children[5].children[0]
+
+        if instruction_block.symbol == "<slozena_naredba>":
+            instruction_block_scope = instruction_block.symbol_table
+            if instruction_block_scope.dist > 24:
+                p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
+            for i in [5,4,3,2,1,0]:
+                p(f'{spaces * " "}POP R{i}\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
         label_counter += 1
@@ -1434,6 +1460,17 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
         p(f'{spaces * " "}JP {label1}\n')
         p(f'{label2}{(spaces - len(label2)) * " "}ADD R0, %D 0, R0\n')
 
+        instruction_block = instruction.children[6].children[0]
+
+        if instruction_block.symbol == "<slozena_naredba>":
+            instruction_block_scope = instruction_block.symbol_table
+            if instruction_block_scope.dist > 24:
+                p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
+            for i in [5,4,3,2,1,0]:
+                p(f'{spaces * " "}POP R{i}\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
+
 def generiraj_naredba_skoka(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
@@ -1447,15 +1484,15 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
 
     elif children == ["KR_BREAK", "TOCKAZAREZ"]:
         curr_instruction = instruction
-        nested_scopes_count = 0
+        curr_dist = 0
+
         while curr_instruction.symbol != "<naredba_petlje>":
             if curr_instruction.symbol == "<slozena_naredba>":
-                nested_scopes_count += 1
+                curr_dist += curr_instruction.symbol_table.dist
             curr_instruction = curr_instruction.parent
-
-        for _ in range(nested_scopes_count):
-            for i in [5,4,3,2,1,0]:
-                p(f'{spaces * " "}POP R{i}\n')
+        
+        if curr_dist > 24:
+            p(f'{spaces * " "}ADD R7, %D {curr_dist - 24}, R7\n')
 
         p(f'{spaces * " "}JP {curr_instruction.attributes["end_label"]}\n')
 
@@ -1469,9 +1506,11 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
 
         if curr_dist > (28 + 4 * len(function_arguments)):
             p(f'{spaces * " "}ADD R7, %D {curr_dist - (28 + 4 * len(function_arguments))}, R7\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
         p(f'{spaces * " "}RET\n')
 
@@ -1488,9 +1527,11 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
 
         if curr_dist > (28 + 4 * len(function_arguments)):
             p(f'{spaces * " "}ADD R7, %D {curr_dist - (28 + 4 * len(function_arguments))}, R7\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
         for i in [5,4,3,2,1,0]:
             p(f'{spaces * " "}POP R{i}\n')
+        p(f'{spaces * " "}MOVE R7, R5\n')
 
         p(f'{spaces * " "}RET\n')
 
