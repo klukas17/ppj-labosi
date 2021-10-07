@@ -1007,11 +1007,11 @@ def generiraj_unarni_izraz(instruction, scope, function_arguments):
 
     elif children == ["OP_INC", "<unarni_izraz>"]:
         generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
-        scope = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
+        flag = dohvati_unarni_izraz(instruction.children[1], scope, function_arguments)
 
         p(f'{spaces * " "}POP R1\n')
         p(f'{spaces * " "}POP R0\n')
-        if scope == Type.LOCAL:
+        if flag == Type.LOCAL:
             p(f'{spaces * " "}ADD R1, R5, R1\n')
         p(f'{spaces * " "}ADD R0, %D 1, R0\n')
         p(f'{spaces * " "}STORE R0, (R1)\n')
@@ -1019,11 +1019,11 @@ def generiraj_unarni_izraz(instruction, scope, function_arguments):
 
     elif children == ["OP_DEC", "<unarni_izraz>"]:
         generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
-        scope = generiraj_unarni_izraz(instruction.children[1], scope, function_arguments)
+        flag = dohvati_unarni_izraz(instruction.children[1], scope, function_arguments)
 
         p(f'{spaces * " "}POP R1\n')
         p(f'{spaces * " "}POP R0\n')
-        if scope == Type.LOCAL:
+        if flag == Type.LOCAL:
             p(f'{spaces * " "}ADD R1, R5, R1\n')
         p(f'{spaces * " "}SUB R0, %D 1, R0\n')
         p(f'{spaces * " "}STORE R0, (R1)\n')
@@ -1040,13 +1040,13 @@ def generiraj_unarni_izraz(instruction, scope, function_arguments):
 
         elif operator == "MINUS":
             p(f'{spaces * " "}LOAD R1, (M_1)\n')
-            p(f'{spaces * " "}X0R R0, R1, R0\n')
+            p(f'{spaces * " "}XOR R0, R1, R0\n')
             p(f'{spaces * " "}ADD R0, %D 1, R0\n')
             p(f'{spaces * " "}PUSH R0\n')
 
         elif operator == "OP_TILDA":
             p(f'{spaces * " "}LOAD R1, (M_1)\n')
-            p(f'{spaces * " "}X0R R0, R1, R0\n')
+            p(f'{spaces * " "}XOR R0, R1, R0\n')
             p(f'{spaces * " "}PUSH R0\n')
 
         elif operator == "OP_NEG":
@@ -1336,7 +1336,7 @@ def dohvati_primarni_izraz(instruction, scope, function_arguments):
             scope = scope.parent
             if scope.parent is None:
                 p(f'{spaces * " "}MOVE {globals[var_name]}, R0\n')
-                p(f'{spaces * " "}PUSH RO\n')
+                p(f'{spaces * " "}PUSH R0\n')
                 return Type.GLOBAL
         
         offset += scope.table[var_name].dist
@@ -1346,13 +1346,13 @@ def dohvati_primarni_izraz(instruction, scope, function_arguments):
 
         if var_name not in function_arguments or not isinstance(instruction.attributes["tip"], s.Array):
             p(f'{spaces * " "}LOAD R0, ({constants[offset]})\n')
-            p(f'{spaces * " "}PUSH RO\n')
+            p(f'{spaces * " "}PUSH R0\n')
             return Type.LOCAL
         else:
             p(f'{spaces * " "}LOAD R1, ({constants[offset]})\n')
             p(f'{spaces * " "}ADD R1, R5, R1\n')
             p(f'{spaces * " "}LOAD R0, (R1)\n')
-            p(f'{spaces * " "}PUSH RO\n')
+            p(f'{spaces * " "}PUSH R0\n')
             return Type.POINTER
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
@@ -1428,8 +1428,6 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
             if instruction_block_scope.dist > 24:
                 p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
-            for i in [5,4,3,2,1,0]:
-                p(f'{spaces * " "}POP R{i}\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
@@ -1467,8 +1465,6 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
             if instruction_block_scope.dist > 24:
                 p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
-            for i in [5,4,3,2,1,0]:
-                p(f'{spaces * " "}POP R{i}\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
 
 def generiraj_naredba_skoka(instruction, scope, function_arguments):
@@ -1542,12 +1538,20 @@ def generiraj_argument_izraz(instruction, scope, function_arguments):
     if children == ["<izraz_pridruzivanja>"]:
         generiraj_argument_izraz_pridruzivanja(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
+        generiraj_argument_izraz(instruction.children[0], scope, function_arguments)
+        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+        generiraj_argument_izraz_pridruzivanja(instruction.children[2], scope, function_arguments)
+
 def generiraj_argument_izraz_pridruzivanja(instruction, scope, function_arguments):
 
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<log_ili_izraz>"]:
         generiraj_argument_log_ili_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
+        generiraj_izraz_pridruzivanja(instruction, scope, function_arguments)
 
 def generiraj_argument_log_ili_izraz(instruction, scope, function_arguments):
     
@@ -1556,12 +1560,18 @@ def generiraj_argument_log_ili_izraz(instruction, scope, function_arguments):
     if children == ["<log_i_izraz>"]:
         generiraj_argument_log_i_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
+        generiraj_log_ili_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_log_i_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_ili_izraz>"]:
         generiraj_argument_bin_ili_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
+        generiraj_log_i_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_bin_ili_izraz(instruction, scope, function_arguments):
     
@@ -1570,12 +1580,18 @@ def generiraj_argument_bin_ili_izraz(instruction, scope, function_arguments):
     if children == ["<bin_xili_izraz>"]:
         generiraj_argument_bin_xili_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
+        generiraj_bin_ili_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_bin_xili_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_i_izraz>"]:
         generiraj_argument_bin_i_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
+        generiraj_bin_xili_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_bin_i_izraz(instruction, scope, function_arguments):
     
@@ -1584,12 +1600,21 @@ def generiraj_argument_bin_i_izraz(instruction, scope, function_arguments):
     if children == ["<jednakosni_izraz>"]:
         generiraj_argument_jednakosni_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
+        generiraj_bin_i_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_jednakosni_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<odnosni_izraz>"]:
         generiraj_argument_odnosni_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
+        generiraj_jednakosni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
+        generiraj_jednakosni_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_odnosni_izraz(instruction, scope, function_arguments):
     
@@ -1598,12 +1623,30 @@ def generiraj_argument_odnosni_izraz(instruction, scope, function_arguments):
     if children == ["<aditivni_izraz>"]:
         generiraj_argument_aditivni_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
+        generiraj_odnosni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"]:
+        generiraj_odnosni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<odnosni_izraz>", "OP_LTE", "<aditivni_izraz>"]:
+        generiraj_odnosni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
+        generiraj_odnosni_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_aditivni_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<multiplikativni_izraz>"]:
         generiraj_argument_multiplikativni_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
+        generiraj_aditivni_izraz(instruction, scope, function_arguments)
+        
+    elif children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
+        generiraj_aditivni_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_multiplikativni_izraz(instruction, scope, function_arguments):
     
@@ -1612,12 +1655,24 @@ def generiraj_argument_multiplikativni_izraz(instruction, scope, function_argume
     if children == ["<cast_izraz>"]:
         generiraj_argument_cast_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["<multiplikativni_izraz>", "OP_PUTA", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction, scope, function_arguments)
+    
+    elif children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
+        generiraj_multiplikativni_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_cast_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<unarni_izraz>"]:
         generiraj_argument_unarni_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
+        generiraj_cast_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_unarni_izraz(instruction, scope, function_arguments):
     
@@ -1626,12 +1681,36 @@ def generiraj_argument_unarni_izraz(instruction, scope, function_arguments):
     if children == ["<postfiks_izraz>"]:
         generiraj_argument_postfiks_izraz(instruction.children[0], scope, function_arguments)
 
+    elif children == ["OP_INC", "<unarni_izraz>"]:
+        generiraj_unarni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["OP_DEC", "<unarni_izraz>"]:
+        generiraj_unarni_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<unarni_operator>", "<cast_izraz>"]:
+        generiraj_unarni_izraz(instruction, scope, function_arguments)
+
 def generiraj_argument_postfiks_izraz(instruction, scope, function_arguments):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<primarni_izraz>"]:
         generiraj_argument_primarni_izraz(instruction.children[0], scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
+        generiraj_postfiks_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "D_ZAGRADA"]:
+        generiraj_postfiks_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "<lista_argumenata>", "D_ZAGRADA"]:
+        generiraj_postfiks_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "OP_INC"]:
+        generiraj_postfiks_izraz(instruction, scope, function_arguments)
+
+    elif children == ["<postfiks_izraz>", "OP_DEC"]:
+        generiraj_postfiks_izraz(instruction, scope, function_arguments)
 
 def generiraj_argument_primarni_izraz(instruction, scope, function_arguments):
     global constant_counter
@@ -1699,6 +1778,268 @@ def generiraj_argument_primarni_izraz(instruction, scope, function_arguments):
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         generiraj_argument_izraz(instruction.children[1], scope, function_arguments)
+
+def izračunaj_konstantni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<izraz_pridruzivanja>"]:
+        return izračunaj_konstantni_izraz_pridruzivanja(instruction.children[0], scope)
+
+    elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
+        pass
+
+def izračunaj_konstantni_izraz_pridruzivanja(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<log_ili_izraz>"]:
+        return izračunaj_konstantni_log_ili_izraz(instruction.children[0], scope)
+
+    elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
+        pass
+
+def izračunaj_konstantni_log_ili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<log_i_izraz>"]:
+        izračunaj_konstantni_log_i_izraz(instruction.children[0], scope)
+
+    elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
+        val1 = izračunaj_konstantni_log_ili_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_log_i_izraz(instruction.children[2], scope)
+
+        val1 = True if val1 != 0 else False
+        val2 = True if val2 != 0 else False
+
+        return val1 or val2
+
+def izračunaj_konstantni_log_i_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_ili_izraz>"]:
+        return izračunaj_konstantni_bin_ili_izraz(instruction.children[0], scope)
+
+    elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
+        val1 = izračunaj_konstantni_log_i_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_bin_ili_izraz(instruction.children[2], scope)
+
+        val1 = True if val1 != 0 else False
+        val2 = True if val2 != 0 else False
+
+        return val1 and val2
+
+def izračunaj_konstantni_bin_ili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_xili_izraz>"]:
+        return izračunaj_konstantni_bin_xili_izraz(instruction.children[0], scope)
+
+    elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
+        val1 = izračunaj_konstantni_bin_ili_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_bin_xili_izraz(instruction.children[2], scope)
+
+        return val1 | val2
+
+def izračunaj_konstantni_bin_xili_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<bin_i_izraz>"]:
+        return izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
+
+    elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
+        val1 = izračunaj_konstantni_bin_xili_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
+
+        return val1 ^ val2
+
+def izračunaj_konstantni_bin_i_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<jednakosni_izraz>"]:
+        return izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+
+    elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
+        val1 = izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+
+        return val1 & val2
+
+def izračunaj_konstantni_jednakosni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<odnosni_izraz>"]:
+        return izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+
+    elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
+        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2], scope)
+
+        return val1 == val2
+
+    elif children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
+        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2], scope)
+
+        return val1 != val2
+
+def izračunaj_konstantni_odnosni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<aditivni_izraz>"]:
+        return izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+
+    elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+
+        return val1 < val2
+
+    elif children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"]:
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+
+        return val1 > val2
+
+    elif children == ["<odnosni_izraz>", "OP_LTE", "<aditivni_izraz>"]:
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+
+        return val1 <= val2
+
+    elif children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+
+        return val1 >= val2
+
+def izračunaj_konstantni_aditivni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<multiplikativni_izraz>"]:
+        return izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
+
+    elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
+        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2], scope)
+
+        return val1 + val2
+        
+    elif children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
+        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2], scope)
+
+        return val1 - val2
+
+def izračunaj_konstantni_multiplikativni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<cast_izraz>"]:
+        return izračunaj_konstantni_cast_izraz(instruction.children[0], scope)
+
+    elif children == ["<multiplikativni_izraz>", "OP_PUTA", "<cast_izraz>"]:
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+
+        return val1 * val2
+
+    elif children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"]:
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+
+        return int(val1 / val2)
+    
+    elif children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+
+        return val1 % val2
+
+def izračunaj_konstantni_cast_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<unarni_izraz>"]:
+        return izračunaj_konstantni_unarni_izraz(instruction.children[0], scope)
+
+    elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
+        return izračunaj_konstantni_cast_izraz(instruction.children[3], scope)
+
+def izračunaj_konstantni_unarni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<postfiks_izraz>"]:
+        return izračunaj_konstantni_postfiks_izraz(instruction.children[0], scope)
+
+    elif children == ["OP_INC", "<unarni_izraz>"]:
+        pass
+
+    elif children == ["OP_DEC", "<unarni_izraz>"]:
+        pass
+
+    elif children == ["<unarni_operator>", "<cast_izraz>"]:
+        val1 = izračunaj_konstantni_cast_izraz(instruction.children[1], scope)
+        operator = instruction.children[0].children[0].symbol
+
+        if operator == "PLUS":
+            return val1
+
+        elif operator == "MINUS":
+            return -1 * val1
+
+        elif operator == "OP_TILDA":
+            return -1 ^ val1
+
+        elif operator == "OP_NEG":
+            return 0 if val1 != 0 else 1
+
+def izračunaj_konstantni_postfiks_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["<primarni_izraz>"]:
+        return izračunaj_konstantni_primarni_izraz(instruction.children[0], scope)
+
+    elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "D_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "<lista_argumenata>", "D_ZAGRADA"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "OP_INC"]:
+        pass
+
+    elif children == ["<postfiks_izraz>", "OP_DEC"]:
+        pass
+
+def izračunaj_konstantni_primarni_izraz(instruction, scope):
+    
+    children = list(map(lambda n: n.symbol, instruction.children))
+
+    if children == ["IDN"]:
+        pass
+
+    elif children == ["BROJ"]:
+        pass
+
+    elif children == ["ZNAK"]:
+        pass
+
+    elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
+        pass
 
 if __name__ == "__main__":
     
