@@ -166,30 +166,14 @@ def generate_global(g):
                 expressions = brothers[2].children[1].children
                 l = []
                 while len(expressions) > 1:
-                    last_child = expressions[2]
+                    l.insert(0, expressions[2])
                     expressions = expressions[0].children
-                    while isinstance(last_child, s.Node):
-                        last_child = last_child.children[0]
-
-                    if last_child.symbol == "BROJ":
-                        l.insert(0, int(last_child.lexical_unit))
-
-                    elif last_child.symbol == "IDN":
-                        l.insert(0, last_child.lexical_unit)
-                
-                last_child = expressions[0]
-                while isinstance(last_child, s.Node):
-                    last_child = last_child.children[0]
-                if last_child.symbol == "BROJ":
-                    l.insert(0, int(last_child.lexical_unit))
-                elif last_child.symbol == "IDN":
-                    l.insert(0, last_child.lexical_unit)
+                l.insert(0, expressions[0])
 
                 for item in l:
-                    if isinstance(item, int):
-                        p(f'%D {item}')
-                    elif isinstance(item, str):
-                        p(f'%D {global_constants[item]}')
+                    val = izračunaj_konstantni_izraz_pridruzivanja(item)
+                    p(f'%D {val}')
+
                     written_count += 1
                     if written_count < elem_count:
                         p(", ")
@@ -210,25 +194,17 @@ def generate_global(g):
                 expressions = brothers[2].children
 
                 if len(expressions) == 3:
-                    expressions = expressions[1].children
+                    expressions = brothers[2].children[1].children
                     l = []
                     while len(expressions) > 1:
-                        last_child = expressions[2]
+                        l.insert(0, expressions[2])
                         expressions = expressions[0].children
-                        while isinstance(last_child, s.Node):
-                            last_child = last_child.children[0]
-                        l.insert(0, last_child)
-                    
-                    last_child = expressions[0]
-                    while isinstance(last_child, s.Node):
-                        last_child = last_child.children[0]
-                    l.insert(0, last_child)
+                    l.insert(0, expressions[0])
 
                     for item in l:
-                        if item.symbol == "ZNAK":
-                            p(f'%D {ord(item.lexical_unit[1])}')
-                        elif item.symbol == "IDN":
-                            p(f'%D {global_constants[item.lexical_unit]}')
+                        val = izračunaj_konstantni_izraz_pridruzivanja(item)
+                        p(f'%D {val}')
+
                         written_count += 1
                         if written_count < elem_count:
                             p(", ")
@@ -269,18 +245,13 @@ def generate_global(g):
 
             elif len(item.parent.children) == 3:
 
-                node = item.parent.children[2]
-                while isinstance(node, s.Node):
-                    node = node.children[0]
+                node = item.parent.children[2].children[0]
+                val = izračunaj_konstantni_izraz_pridruzivanja(node)
 
-                if node.symbol == "BROJ":
-                    p(f'{node.lexical_unit}\n\n')
-
-                elif node.symbol == "IDN":
-                    p(f'{global_constants[node.lexical_unit]}\n\n')
+                p(f'{val}\n\n')
 
                 if isinstance(old_tip, s.Const):
-                    global_constants[g] = int(node.lexical_unit)
+                    global_constants[g] = val
 
         elif isinstance(tip, s.Char):
             p("DW %D ")
@@ -289,18 +260,14 @@ def generate_global(g):
                 p('0\n\n')
 
             elif len(item.parent.children) == 3:
-                node = item.parent.children[2]
-                while isinstance(node, s.Node):
-                    node = node.children[0]
 
-                if node.symbol == "ZNAK":
-                    p(f'{ord(node.lexical_unit[1])}\n\n')
+                node = item.parent.children[2].children[0]
+                val = izračunaj_konstantni_izraz_pridruzivanja(node)
 
-                elif node.symbol == "IDN":
-                    p(f'{global_constants[node.lexical_unit]}\n\n')
+                p(f'{val}\n\n')
 
                 if isinstance(old_tip, s.Const):
-                    global_constants[g] = ord(node.lexical_unit[1])
+                    global_constants[g] = val
 
 # funkcija generira strojni kod za dane lokalne deklaracije
 def generate_local_variable(l, scope, dist, function_arguments) -> int:
@@ -1779,216 +1746,204 @@ def generiraj_argument_primarni_izraz(instruction, scope, function_arguments):
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
         generiraj_argument_izraz(instruction.children[1], scope, function_arguments)
 
-def izračunaj_konstantni_izraz(instruction, scope):
+def izračunaj_konstantni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<izraz_pridruzivanja>"]:
-        return izračunaj_konstantni_izraz_pridruzivanja(instruction.children[0], scope)
+        return izračunaj_konstantni_izraz_pridruzivanja(instruction.children[0])
 
-    elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
-        pass
-
-def izračunaj_konstantni_izraz_pridruzivanja(instruction, scope):
+def izračunaj_konstantni_izraz_pridruzivanja(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<log_ili_izraz>"]:
-        return izračunaj_konstantni_log_ili_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_log_ili_izraz(instruction.children[0])
 
-    elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
-        pass
-
-def izračunaj_konstantni_log_ili_izraz(instruction, scope):
+def izračunaj_konstantni_log_ili_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<log_i_izraz>"]:
-        izračunaj_konstantni_log_i_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_log_i_izraz(instruction.children[0])
 
     elif children == ["<log_ili_izraz>", "OP_ILI", "<log_i_izraz>"]:
-        val1 = izračunaj_konstantni_log_ili_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_log_i_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_log_ili_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_log_i_izraz(instruction.children[2])
 
-        val1 = True if val1 != 0 else False
-        val2 = True if val2 != 0 else False
+        val1 = 1 if val1 != 0 else 0
+        val2 = 1 if val2 != 0 else 0
 
         return val1 or val2
 
-def izračunaj_konstantni_log_i_izraz(instruction, scope):
+def izračunaj_konstantni_log_i_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_ili_izraz>"]:
-        return izračunaj_konstantni_bin_ili_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_bin_ili_izraz(instruction.children[0])
 
     elif children == ["<log_i_izraz>", "OP_I", "<bin_ili_izraz>"]:
-        val1 = izračunaj_konstantni_log_i_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_bin_ili_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_log_i_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_bin_ili_izraz(instruction.children[2])
 
-        val1 = True if val1 != 0 else False
-        val2 = True if val2 != 0 else False
+        val1 = 1 if val1 != 0 else 0
+        val2 = 1 if val2 != 0 else 0
 
         return val1 and val2
 
-def izračunaj_konstantni_bin_ili_izraz(instruction, scope):
+def izračunaj_konstantni_bin_ili_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_xili_izraz>"]:
-        return izračunaj_konstantni_bin_xili_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_bin_xili_izraz(instruction.children[0])
 
     elif children == ["<bin_ili_izraz>", "OP_BIN_ILI", "<bin_xili_izraz>"]:
-        val1 = izračunaj_konstantni_bin_ili_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_bin_xili_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_bin_ili_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_bin_xili_izraz(instruction.children[2])
 
         return val1 | val2
 
-def izračunaj_konstantni_bin_xili_izraz(instruction, scope):
+def izračunaj_konstantni_bin_xili_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<bin_i_izraz>"]:
-        return izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_bin_i_izraz(instruction.children[0])
 
     elif children == ["<bin_xili_izraz>", "OP_BIN_XILI", "<bin_i_izraz>"]:
-        val1 = izračunaj_konstantni_bin_xili_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_bin_xili_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_bin_i_izraz(instruction.children[2])
 
         return val1 ^ val2
 
-def izračunaj_konstantni_bin_i_izraz(instruction, scope):
+def izračunaj_konstantni_bin_i_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<jednakosni_izraz>"]:
-        return izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_jednakosni_izraz(instruction.children[0])
 
     elif children == ["<bin_i_izraz>", "OP_BIN_I", "<jednakosni_izraz>"]:
-        val1 = izračunaj_konstantni_bin_i_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_bin_i_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_jednakosni_izraz(instruction.children[2])
 
         return val1 & val2
 
-def izračunaj_konstantni_jednakosni_izraz(instruction, scope):
+def izračunaj_konstantni_jednakosni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<odnosni_izraz>"]:
-        return izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_odnosni_izraz(instruction.children[0])
 
     elif children == ["<jednakosni_izraz>", "OP_EQ", "<odnosni_izraz>"]:
-        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2])
 
-        return val1 == val2
+        return 1 if val1 == val2 else 0
 
     elif children == ["<jednakosni_izraz>", "OP_NEQ", "<odnosni_izraz>"]:
-        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_jednakosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_odnosni_izraz(instruction.children[2])
 
-        return val1 != val2
+        return 1 if val1 != val2 else 0
 
-def izračunaj_konstantni_odnosni_izraz(instruction, scope):
+def izračunaj_konstantni_odnosni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<aditivni_izraz>"]:
-        return izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_aditivni_izraz(instruction.children[0])
 
     elif children == ["<odnosni_izraz>", "OP_LT", "<aditivni_izraz>"]:
-        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[2])
 
-        return val1 < val2
+        return 1 if val1 < val2 else 0
 
     elif children == ["<odnosni_izraz>", "OP_GT", "<aditivni_izraz>"]:
-        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[2])
 
-        return val1 > val2
+        return 1 if val1 > val2 else 0
 
     elif children == ["<odnosni_izraz>", "OP_LTE", "<aditivni_izraz>"]:
-        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[2])
 
-        return val1 <= val2
+        return 1 if val1 <= val2 else 0
 
     elif children == ["<odnosni_izraz>", "OP_GTE", "<aditivni_izraz>"]:
-        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
+        val1 = izračunaj_konstantni_odnosni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_aditivni_izraz(instruction.children[2])
 
-        return val1 >= val2
+        return 1 if val1 >= val2 else 0
 
-def izračunaj_konstantni_aditivni_izraz(instruction, scope):
+def izračunaj_konstantni_aditivni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<multiplikativni_izraz>"]:
-        return izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_multiplikativni_izraz(instruction.children[0])
 
     elif children == ["<aditivni_izraz>", "PLUS", "<multiplikativni_izraz>"]:
-        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2])
 
         return val1 + val2
         
     elif children == ["<aditivni_izraz>", "MINUS", "<multiplikativni_izraz>"]:
-        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_aditivni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[2])
 
         return val1 - val2
 
-def izračunaj_konstantni_multiplikativni_izraz(instruction, scope):
+def izračunaj_konstantni_multiplikativni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<cast_izraz>"]:
-        return izračunaj_konstantni_cast_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_cast_izraz(instruction.children[0])
 
     elif children == ["<multiplikativni_izraz>", "OP_PUTA", "<cast_izraz>"]:
-        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2])
 
         return val1 * val2
 
     elif children == ["<multiplikativni_izraz>", "OP_DIJELI", "<cast_izraz>"]:
-        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2])
 
         return int(val1 / val2)
     
     elif children == ["<multiplikativni_izraz>", "OP_MOD", "<cast_izraz>"]:
-        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0], scope)
-        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2], scope)
+        val1 = izračunaj_konstantni_multiplikativni_izraz(instruction.children[0])
+        val2 = izračunaj_konstantni_cast_izraz(instruction.children[2])
 
         return val1 % val2
 
-def izračunaj_konstantni_cast_izraz(instruction, scope):
+def izračunaj_konstantni_cast_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<unarni_izraz>"]:
-        return izračunaj_konstantni_unarni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_unarni_izraz(instruction.children[0])
 
     elif children == ["L_ZAGRADA", "<ime_tipa>", "D_ZAGRADA", "<cast_izraz>"]:
-        return izračunaj_konstantni_cast_izraz(instruction.children[3], scope)
+        return izračunaj_konstantni_cast_izraz(instruction.children[3])
 
-def izračunaj_konstantni_unarni_izraz(instruction, scope):
+def izračunaj_konstantni_unarni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<postfiks_izraz>"]:
-        return izračunaj_konstantni_postfiks_izraz(instruction.children[0], scope)
-
-    elif children == ["OP_INC", "<unarni_izraz>"]:
-        pass
-
-    elif children == ["OP_DEC", "<unarni_izraz>"]:
-        pass
+        return izračunaj_konstantni_postfiks_izraz(instruction.children[0])
 
     elif children == ["<unarni_operator>", "<cast_izraz>"]:
-        val1 = izračunaj_konstantni_cast_izraz(instruction.children[1], scope)
+        val1 = izračunaj_konstantni_cast_izraz(instruction.children[1])
         operator = instruction.children[0].children[0].symbol
 
         if operator == "PLUS":
@@ -2003,43 +1958,31 @@ def izračunaj_konstantni_unarni_izraz(instruction, scope):
         elif operator == "OP_NEG":
             return 0 if val1 != 0 else 1
 
-def izračunaj_konstantni_postfiks_izraz(instruction, scope):
+def izračunaj_konstantni_postfiks_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["<primarni_izraz>"]:
-        return izračunaj_konstantni_primarni_izraz(instruction.children[0], scope)
+        return izračunaj_konstantni_primarni_izraz(instruction.children[0])
 
-    elif children == ["<postfiks_izraz>", "L_UGL_ZAGRADA", "<izraz>", "D_UGL_ZAGRADA"]:
-        pass
-
-    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "D_ZAGRADA"]:
-        pass
-
-    elif children == ["<postfiks_izraz>", "L_ZAGRADA", "<lista_argumenata>", "D_ZAGRADA"]:
-        pass
-
-    elif children == ["<postfiks_izraz>", "OP_INC"]:
-        pass
-
-    elif children == ["<postfiks_izraz>", "OP_DEC"]:
-        pass
-
-def izračunaj_konstantni_primarni_izraz(instruction, scope):
+def izračunaj_konstantni_primarni_izraz(instruction):
     
     children = list(map(lambda n: n.symbol, instruction.children))
 
     if children == ["IDN"]:
-        pass
+        var_name = instruction.children[0].lexical_unit
+        return global_constants[var_name]
 
     elif children == ["BROJ"]:
-        pass
+        item = int(instruction.children[0].lexical_unit)
+        return item
 
     elif children == ["ZNAK"]:
-        pass
+        item = ord(instruction.children[0].lexical_unit[1])
+        return item
 
     elif children == ["L_ZAGRADA", "<izraz>", "D_ZAGRADA"]:
-        pass
+        return izračunaj_konstantni_izraz(instruction.children[1])
 
 if __name__ == "__main__":
     
