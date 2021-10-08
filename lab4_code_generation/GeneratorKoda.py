@@ -48,7 +48,7 @@ machine_code = open("a.frisc", "w")
 # temp funkcija za debugging
 def p(s):
     machine_code.write(s)
-    print(s,end='')
+    #print(s,end='')
 
 # funkcija generira strojni kod za danu funkciju
 def generate_function(f):
@@ -290,41 +290,7 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
         elem_count = item.attributes["br-elem"]
         items = []
 
-        if isinstance(tip, s.Int):
-            brothers = item.parent.children
-
-            if len(brothers) == 3:
-
-                expressions = brothers[2].children[1].children
-
-                while len(expressions) == 3:
-                    items.append(expressions[2])
-                    expressions = expressions[0].children
-                items.append(expressions[0])
-
-            while len(items) < elem_count:
-                items.insert(0, None)
-
-            scope.table[l].dist = 0
-            dist += len(items) * 4
-
-            for item in items:
-
-                if item is None:
-                    val = 0
-                    if val not in constants:
-                        constant_counter += 1
-                        constants[val] = f'C_{constant_counter}'
-
-                    label = constants[val]
-
-                    p(f'{spaces * " "}LOAD R0, ({label})\n')
-                    p(f'{spaces * " "}PUSH R0\n')
-
-                else:
-                    generiraj_izraz_pridruzivanja(item, scope, function_arguments)
-
-        elif isinstance(tip, s.Char):
+        if isinstance(tip, s.Int) or isinstance(tip, s.Char):
             brothers = item.parent.children
 
             if len(brothers) == 3:
@@ -1359,9 +1325,6 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
             if instruction_block_scope.dist > 24:
                 p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
-            for i in [5,4,3,2,1,0]:
-                p(f'{spaces * " "}POP R{i}\n')
-            p(f'{spaces * " "}MOVE R7, R5\n')
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "D_ZAGRADA", "<naredba>"]:
         label_counter += 1
@@ -1394,7 +1357,6 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
             instruction_block_scope = instruction_block.symbol_table
             if instruction_block_scope.dist > 24:
                 p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
-            p(f'{spaces * " "}MOVE R7, R5\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
 
     elif children == ["KR_FOR", "L_ZAGRADA", "<izraz_naredba>", "<izraz_naredba>", "<izraz>", "D_ZAGRADA", "<naredba>"]:
@@ -1431,7 +1393,6 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
             instruction_block_scope = instruction_block.symbol_table
             if instruction_block_scope.dist > 24:
                 p(f'{spaces * " "}ADD R7, %D {instruction_block_scope.dist - 24}, R7\n')
-            p(f'{spaces * " "}MOVE R7, R5\n')
             p(f'{spaces * " "}MOVE R7, R5\n')
 
 def generiraj_naredba_skoka(instruction, scope, function_arguments):
