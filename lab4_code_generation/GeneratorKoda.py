@@ -237,23 +237,7 @@ def generate_global(g):
         if isinstance(tip, s.Const):
             tip = tip.primitive
 
-        if isinstance(tip, s.Int):
-            p("DW %D ")
-
-            if len(item.parent.children) == 1:
-                p('0\n\n')
-
-            elif len(item.parent.children) == 3:
-
-                node = item.parent.children[2].children[0]
-                val = izračunaj_konstantni_izraz_pridruzivanja(node)
-
-                p(f'{val}\n\n')
-
-                if isinstance(old_tip, s.Const):
-                    global_constants[g] = val
-
-        elif isinstance(tip, s.Char):
+        if isinstance(tip, s.Int) or isinstance(tip, s.Char):
             p("DW %D ")
 
             if len(item.parent.children) == 1:
