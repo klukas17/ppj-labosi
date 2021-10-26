@@ -223,9 +223,6 @@ if __name__ == "__main__":
         rule_index = None
         prefix_found_length = 0
 
-        if curr_line == 12:
-            o = 0
-
         # za svako pravilo pokušaj pronaći najdulji prefiks
         for i in range(len(rules)):
             ret_val = find_prefix(rules[i])

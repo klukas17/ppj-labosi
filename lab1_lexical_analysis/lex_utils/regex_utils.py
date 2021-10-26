@@ -89,7 +89,7 @@ class Symbol(RegularSubexpression):
 					ret_val.elements.append(e)
 
 				for i in range(len(ret_val.elements)):
-				    ret_val.elements[i] = ret_val.elements[i].build_regex_tree()
+					ret_val.elements[i] = ret_val.elements[i].build_regex_tree()
 
 		else:
 			ret_val = Alternation()

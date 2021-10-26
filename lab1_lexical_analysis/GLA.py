@@ -1,4 +1,3 @@
-from sys import stdin
 from lex_utils import rule
 
 # enumeracija za parsiranje ulazne .lan datoteke
