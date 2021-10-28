@@ -167,6 +167,8 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
     # micanje escape znakova
     prefix_list = [c if c not in ['\\(', '\\)', '\\{', '\\}', '\\|', '\\*', '\\$', '\\\\'] else c[1] for c in prefix_list]
     prefix_list = [c if c != "\\_" else " " for c in prefix_list]
+    prefix_list = [c if c != "\\t" else "\t" for c in prefix_list]
+    prefix_list = [c if c != "\\n" else "\n" for c in prefix_list]
 
     found_prefix = ''.join(prefix_list)
 
@@ -174,6 +176,15 @@ def apply_rule(rule: rule.Rule, prefix_length: int) -> None:
         print(f'{rule.lexem} {curr_line} {found_prefix if not rule.VRATI_SE else found_prefix[:rule.VRATI_SE_arg]}')
     
     found_prefix_unescaped = list(found_prefix)
+
+    for i in range(len(found_prefix_unescaped)):
+        if found_prefix_unescaped[i] == " ":
+            found_prefix_unescaped[i] = "\\_"
+        elif found_prefix_unescaped[i] == "\n":
+            found_prefix_unescaped[i] = "\\n"
+        elif found_prefix_unescaped[i] == "\t":
+            found_prefix_unescaped[i] = "\\t"
+
     found_prefix = []
 
     i = 0
