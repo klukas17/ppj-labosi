@@ -80,7 +80,7 @@ def calculate_directly_starts_with(nonterminal_symbols: list, terminal_symbols: 
 
 # funkcija računa relaciju ZapočinjeZnakom
 def calculate_starts_with(nonterminal_symbols: list, terminal_symbols: list, productions: dict, table: dict) -> None:
-     
+    
     # određivanje refleksivnog okruženja relacije IzravnoZapočinjeZnakom
     for symbol in nonterminal_symbols:
         table[symbol][symbol] = True

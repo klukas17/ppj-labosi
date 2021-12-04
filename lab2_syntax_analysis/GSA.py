@@ -95,9 +95,6 @@ lr_dict_index = {}
 # riječnik koji pod ključem tuple koji označava stanje DKA čuva redni broj tog stanja za gradnju parsera
 parser_states = {}
 
-# lista u kojoj se čuvaju sve nejednoznačnosti u gramatici
-conflicts = []
-
 # jedinstvena varijabla pod kojom se čuva oznaka kraja niza
 end_symbol = End_symbol()
 

@@ -117,7 +117,7 @@ parser_table = {}
 stack = []
 uniform_units = None
 errors = []
-last_line = None # za dodjelu broja retka oznaci kraja niza
+last_line = 1 # za dodjelu broja retka oznaci kraja niza
 end_symbol = End_symbol()
 stack_end = Stack_end()
 
@@ -237,7 +237,6 @@ def build_generative_tree() -> Abs_Node:
         if uniform_unit is None:
             uniform_unit = fetch_next_uniform_unit()
 
-        # ! provjeriti ispravnost
         # zbog sintaksne greške nije moguće izgraditi generativno stablo
         if uniform_unit.symbol == fetch_end_symbol() and len(stack) == 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
             return None
@@ -255,7 +254,6 @@ def build_generative_tree() -> Abs_Node:
 
             elif isinstance(action, Reduce):
 
-                # ! provjeriti ispravnost
                 # završetak parsiranja
                 if action.left_side == nonterminal_symbols[0]:
                     return stack[-2]
@@ -269,7 +267,7 @@ def build_generative_tree() -> Abs_Node:
 
                 # ako novi unutarnji čvor nema djecu, tj. riječ je o epsilon produkciji
                 if len(new_symbol.children) == 0:
-                    new_symbol.children =  [Empty_Leaf()]
+                    new_symbol.children = [Empty_Leaf()]
 
                 # inače treba obrnuti poredak djece jer se na čitaju zdesna nalijevo
                 else:
@@ -300,17 +298,14 @@ def build_generative_tree() -> Abs_Node:
             err.expected = ' | '.join(expected)
             errors.append(err)
 
-            # ! provjeriti ispravnost
             # pronalazak sinkronizacijskog znaka
-            while uniform_unit.symbol not in synchronisation_symbols:
+            while uniform_unit.symbol not in synchronisation_symbols and uniform_unit.symbol != fetch_end_symbol():
                 uniform_unit = fetch_next_uniform_unit()
 
-            # ! provjeriti ispravnost
             # odbacivanje znakova sa stoga
             while len(stack) > 2 and uniform_unit.symbol not in parser_table[stack[-1]]:
                 stack = stack[:len(stack)-2]
 
-            # ! provjeriti ispravnost
             # za sinkronizacijski simbol nije moguće nastaviti graditi generativno stablo
             if uniform_unit.symbol in synchronisation_symbols and uniform_unit.symbol not in parser_table[stack[-1]] and len(stack) == 2:
                 uniform_unit = None
