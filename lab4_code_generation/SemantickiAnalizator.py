@@ -685,6 +685,9 @@ def provjeri_izraz_pridruzivanja(node: Node):
         node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<postfiks_izraz>", "OP_PRIDRUZI", "<izraz_pridruzivanja>"]:
+        if node.symbol_table.parent is None:
+            print_error(node)
+
         provjeri_postfiks_izraz(node.children[0])
         if not node.children[0].attributes["l-izraz"] == 1:
             print_error(node)
@@ -710,6 +713,9 @@ def provjeri_izraz(node: Node):
         node.attributes["l-izraz"] = node.children[0].attributes["l-izraz"] if "l-izraz" in node.children[0].attributes else None
 
     elif children == ["<izraz>", "ZAREZ", "<izraz_pridruzivanja>"]:
+        if node.symbol_table.parent is None:
+            print_error(node)
+
         provjeri_izraz(node.children[0])
         provjeri_izraz_pridruzivanja(node.children[2])
 
