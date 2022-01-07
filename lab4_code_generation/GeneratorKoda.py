@@ -45,13 +45,15 @@ label_counter = 0
 # globalna varijabla za a.frisc datoteku
 machine_code = open("a.frisc", "w")
 
-# temp funkcija za debugging
+# funkcija za ispis koda u datoteku a.frisc i opcionalno na stdout
 def p(s):
     machine_code.write(s)
     #print(s,end='')
 
 # funkcija generira strojni kod za danu funkciju
 def generate_function(f):
+    global constant_counter
+
     p(f'{functions[f]}\n')
 
     function_body = s.function_definitions[f]
@@ -90,7 +92,7 @@ def generate_function(f):
     for l in function_body.node.symbol_table.table:
         if function_body.node.symbol_table.table[l].dist is None:
             dist_before = dist
-            dist = generate_local_variable(l, function_body.node.symbol_table, dist, function_arguments)
+            dist, definitions = generate_local_variable(l, function_body.node.symbol_table, dist, function_arguments)
             diff = dist - dist_before
             if diff > 0:
                 for param in function_body.node.symbol_table.table:
@@ -102,6 +104,46 @@ def generate_function(f):
 
             # ažuriranje veličine okvira stoga
             function_body.node.symbol_table.dist = dist
+
+            if len(definitions) == 1:
+                d = definitions[0]
+                if d == None:
+                    p(f'{spaces * " "}MOVE %D 0, R1\n')
+                    p(f'{spaces * " "}ADD R5, %D {function_body.node.symbol_table.table[l].dist}, R0\n')
+                    p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                else:
+                    generiraj_izraz_pridruzivanja(d, function_body.node.symbol_table, function_arguments)
+                    p(f'{spaces * " "}POP R1\n')
+                    p(f'{spaces * " "}ADD R5, %D {function_body.node.symbol_table.table[l].dist}, R0\n')
+                    p(f'{spaces * " "}STORE R1, (R0)\n')
+
+            else:
+                definitions = definitions[::-1]
+                for i in range(len(definitions)):
+                    d = definitions[i]
+                    
+                    if d == None:
+                        p(f'{spaces * " "}MOVE %D 0, R1\n')
+                        p(f'{spaces * " "}ADD R5, %D {function_body.node.symbol_table.table[l].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                    elif isinstance(d, int):
+                        if d not in constants:
+                            constant_counter += 1
+                            constants[d] = f'C_{constant_counter}'
+
+                        label = constants[d]
+
+                        p(f'{spaces * " "}LOAD R1, ({label})\n')
+                        p(f'{spaces * " "}ADD R5, %D {function_body.node.symbol_table.table[l].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                    else:
+                        generiraj_izraz_pridruzivanja(d, function_body.node.symbol_table, function_arguments)
+                        p(f'{spaces * " "}POP R1\n')
+                        p(f'{spaces * " "}ADD R5, %D {function_body.node.symbol_table.table[l].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
 
     instructions = []
     body = function_body.node.children[5].children[-2]
@@ -261,7 +303,9 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
 
     # deklaracija funkcije
     if isinstance(item, s.Function):
-        return dist
+        return (dist, [])
+
+    items = []
 
     # polje
     if isinstance(item.attributes["tip"], s.Array):
@@ -291,22 +335,6 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
                     while len(items) < elem_count:
                         items.insert(0, None)
 
-                    for item in items:
-
-                        if item is None:
-                            val = 0
-                            if val not in constants:
-                                constant_counter += 1
-                                constants[val] = f'C_{constant_counter}'
-
-                            label = constants[val]
-
-                            p(f'{spaces * " "}LOAD R0, ({label})\n')
-                            p(f'{spaces * " "}PUSH R0\n')
-
-                        else:
-                            generiraj_izraz_pridruzivanja(item, scope, function_arguments)
-
                     scope.table[l].dist = 0
                     dist += len(items) * 4
 
@@ -327,32 +355,9 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
                     scope.table[l].dist = 0
                     dist += len(items) * 4
 
-                    for item in items:
-                        
-                        if item not in constants:
-                            constant_counter += 1
-                            constants[item] = f'C_{constant_counter}'
-
-                        label = constants[item]
-
-                        p(f'{spaces * " "}LOAD R0, ({label})\n')
-                        p(f'{spaces * " "}PUSH R0\n')
-
             elif len(brothers) == 1:
                 
-                for _ in range(elem_count):
-                    items.append(0)
-
-                for item in items:
-
-                    if item not in constants:
-                        constant_counter += 1
-                        constants[item] = f'C_{constant_counter}'
-
-                    label = constants[item]
-
-                    p(f'{spaces * " "}LOAD R0, ({label})\n')
-                    p(f'{spaces * " "}PUSH R0\n')
+                items = [None]*elem_count
 
                 scope.table[l].dist = 0
                 dist += 4 * elem_count
@@ -364,29 +369,19 @@ def generate_local_variable(l, scope, dist, function_arguments) -> int:
         
         if isinstance(tip, s.Const):
             tip = tip.primitive
-    
+
         if len(item.parent.children) == 1:
-            value = 0
-
-            if value not in constants:
-                constant_counter += 1
-                constants[value] = f'C_{constant_counter}'
-
-            label = constants[value]
-
-            p(f'{spaces * " "}LOAD R0, ({label})\n')
-            p(f'{spaces * " "}PUSH R0\n')
-
+            items = [None]
+        
         elif len(item.parent.children) == 3:
-
-            generiraj_izraz_pridruzivanja(item.parent.children[2].children[0], scope, function_arguments)
-
-            # na stogu se sada nalazi ta varijabla s vrijednošću i nije ju potrebno mijenjati
+            items = [item.parent.children[2].children[0]]
 
         scope.table[l].dist = 0
         dist += 4
 
-    return dist
+    p(f'{spaces * " "}SUB R7, %D {4 * len(items)}, R7\n')
+
+    return dist, items
 
 def generiraj_naredba(instruction, scope, function_arguments):
     
@@ -410,6 +405,8 @@ def generiraj_naredba(instruction, scope, function_arguments):
 
 def generiraj_slozena_naredba(instruction, scope, function_arguments):
 
+    global constant_counter
+
     instructions = []
     scope = instruction.symbol_table
     dist = 0
@@ -431,16 +428,59 @@ def generiraj_slozena_naredba(instruction, scope, function_arguments):
     # deklaracije
     if len(scope.table) > 0:
         for item in scope.table:
-            old_dist = dist
-            dist = generate_local_variable(item, scope, dist, function_arguments)
-            diff = dist - old_dist
+            dist_before = dist
+            dist, definitions = generate_local_variable(item, scope, dist, function_arguments)
+            diff = dist - dist_before
             if diff > 0:
-                for var in scope.table:
-                    if scope.table[var].dist is not None and var != item:
-                        scope.table[var].dist += diff
+                for param in scope.table:
+                    if scope.table[param].dist is not None and param != item:
+                        scope.table[param].dist += diff
 
+            # ažuriranje okvira stoga
             p(f'{spaces * " "}MOVE R7, R5\n')
+
+            # ažuriranje veličine okvira stoga
             scope.dist = dist
+
+            if len(definitions) == 1:
+                d = definitions[0]
+                if d == None:
+                    p(f'{spaces * " "}MOVE %D 0, R1\n')
+                    p(f'{spaces * " "}ADD R5, %D {scope.table[item].dist}, R0\n')
+                    p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                else:
+                    generiraj_izraz_pridruzivanja(d, scope, function_arguments)
+                    p(f'{spaces * " "}POP R1\n')
+                    p(f'{spaces * " "}ADD R5, %D {scope.table[item].dist}, R0\n')
+                    p(f'{spaces * " "}STORE R1, (R0)\n')
+
+            else:
+                definitions = definitions[::-1]
+                for i in range(len(definitions)):
+                    d = definitions[i]
+                    
+                    if d == None:
+                        p(f'{spaces * " "}MOVE %D 0, R1\n')
+                        p(f'{spaces * " "}ADD R5, %D {scope.table[item].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                    elif isinstance(d, int):
+                        if d not in constants:
+                            constant_counter += 1
+                            constants[d] = f'C_{constant_counter}'
+
+                        label = constants[d]
+
+                        p(f'{spaces * " "}LOAD R1, ({label})\n')
+                        p(f'{spaces * " "}ADD R5, %D {scope.table[item].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
+
+                    else:
+                        generiraj_izraz_pridruzivanja(d, scope, function_arguments)
+                        p(f'{spaces * " "}POP R1\n')
+                        p(f'{spaces * " "}ADD R5, %D {scope.table[item].dist + i*4}, R0\n')
+                        p(f'{spaces * " "}STORE R1, (R0)\n')
 
     for instruction in instructions:
         generiraj_naredba(instruction, scope, function_arguments)
