@@ -1360,11 +1360,16 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
         instruction.attributes["end_label"] = label2
 
         generiraj_izraz_naredba(instruction.children[2], scope, function_arguments)
-        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+        if instruction.children[2].children[0].symbol != "TOCKAZAREZ":
+            p(f'{spaces * " "}ADD R7, %D 4, R7\n')
 
         p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
 
-        generiraj_izraz_naredba(instruction.children[3], scope, function_arguments)
+        if instruction.children[3].children[0].symbol != "TOCKAZAREZ":
+            generiraj_izraz_naredba(instruction.children[3], scope, function_arguments)
+        else:
+            p(f'{spaces * " "}MOVE %D 1, R0\n')
+            p(f'{spaces * " "}PUSH R0\n')
 
         p(f'{spaces * " "}POP R0\n')
         p(f'{spaces * " "}CMP R0, %D 0\n')
@@ -1393,11 +1398,16 @@ def generiraj_naredba_petlje(instruction, scope, function_arguments):
         instruction.attributes["end_label"] = label2
 
         generiraj_izraz_naredba(instruction.children[2], scope, function_arguments)
-        p(f'{spaces * " "}ADD R7, %D 4, R7\n')
-
+        if instruction.children[2].children[0].symbol != "TOCKAZAREZ":
+            p(f'{spaces * " "}ADD R7, %D 4, R7\n')
+            
         p(f'{label1}{(spaces - len(label1)) * " "}ADD R0, %D 0, R0\n')
 
-        generiraj_izraz_naredba(instruction.children[3], scope, function_arguments)
+        if instruction.children[3].children[0].symbol != "TOCKAZAREZ":
+            generiraj_izraz_naredba(instruction.children[3], scope, function_arguments)
+        else:
+            p(f'{spaces * " "}MOVE %D 1, R0\n')
+            p(f'{spaces * " "}PUSH R0\n')
 
         p(f'{spaces * " "}POP R0\n')
         p(f'{spaces * " "}CMP R0, %D 0\n')
@@ -1425,8 +1435,16 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
 
     if children == ["KR_CONTINUE", "TOCKAZAREZ"]:
         curr_instruction = instruction
+        curr_dist = 0
+
         while curr_instruction.symbol != "<naredba_petlje>":
+            if curr_instruction.symbol == "<slozena_naredba>":
+                curr_dist += curr_instruction.symbol_table.dist
             curr_instruction = curr_instruction.parent
+        
+        if curr_dist >= 24:
+            p(f'{spaces * " "}ADD R7, %D {curr_dist}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
 
         p(f'{spaces * " "}JP {curr_instruction.attributes["start_label"]}\n')
 
@@ -1439,8 +1457,9 @@ def generiraj_naredba_skoka(instruction, scope, function_arguments):
                 curr_dist += curr_instruction.symbol_table.dist
             curr_instruction = curr_instruction.parent
         
-        if curr_dist > 24:
-            p(f'{spaces * " "}ADD R7, %D {curr_dist - 24}, R7\n')
+        if curr_dist >= 24:
+            p(f'{spaces * " "}ADD R7, %D {curr_dist}, R7\n')
+            p(f'{spaces * " "}MOVE R7, R5\n')
 
         p(f'{spaces * " "}JP {curr_instruction.attributes["end_label"]}\n')
 
